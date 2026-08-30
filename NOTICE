@@ -1,0 +1,12 @@
+dsh-commandcode
+Copyright (c) 2026 dsh-commandcode contributors
+
+This product includes software developed by third parties:
+
+- Ported from and inspired by dsh-commandcode-provider (MIT)
+  https://github.com/Mars-Sea/dsh-commandcode-provider
+  Copyright (c) 2025 Mars-Sea
+
+- Originally ported from pi-commandcode-provider (MIT)
+
+This software is provided under the MIT License. See LICENSE for details.

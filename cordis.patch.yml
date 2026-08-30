@@ -1,0 +1,11 @@
+# dsh-commandcode bundle layer.
+# Registers the `commandcode` provider route and its Models-page card.
+#
+# `name` must be the FULL package specifier as installed in the profile's
+# node_modules. Quote the value: a YAML scalar starting with `@` is parsed
+# as a directive/indicator and fails to parse.
+- insert:
+    - id: llm-commandcode
+      name: "dsh-commandcode"
+      config:
+        apiKeyEnv: COMMANDCODE_API_KEY
