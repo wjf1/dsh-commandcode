@@ -173,5 +173,10 @@
     "@deepseek-ai/dsh-util-workspace-path": "file:vendor/deepseek-ai-dsh-util-workspace-path-0.1.2-alpha.1.tgz",
     "@deepseek-ai/dsh-workspace": "file:vendor/deepseek-ai-dsh-workspace-0.1.2-alpha.1.tgz",
     "@deepseek-ai/schemastery": "file:vendor/deepseek-ai-schemastery-3.18.1.tgz"
+  },
+  "pnpm": {
+    "overrides": {
+      "@deepseek-ai/dsh-typert-protocol": "file:vendor/deepseek-ai-dsh-typert-protocol-0.1.2-alpha.1.tgz"
+    }
   }
 }
