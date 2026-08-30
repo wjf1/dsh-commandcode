@@ -40,6 +40,7 @@
     "cordis.patch.yml",
     "screenshots.json",
     "tsdown.config.js",
+    "polyfill.mjs",
     "README.md",
     "README.zh-CN.md",
     "CHANGELOG.md",
@@ -47,14 +48,14 @@
     "NOTICE"
   ],
   "scripts": {
-    "build": "tsdown --config tsdown.config.js",
-    "prepare": "tsdown --config tsdown.config.js",
+    "build": "node --import ./polyfill.mjs node_modules/tsdown/dist/run.mjs --config tsdown.config.js",
+    "prepare": "node --import ./polyfill.mjs node_modules/tsdown/dist/run.mjs --config tsdown.config.js",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/**/*.test.ts",
     "lint": "tsc --noEmit"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=20"
   },
   "publishConfig": {
     "access": "public"
