@@ -39,6 +39,7 @@
     "assets",
     "cordis.patch.yml",
     "screenshots.json",
+    "tsdown.config.js",
     "README.md",
     "README.zh-CN.md",
     "CHANGELOG.md",
@@ -46,8 +47,8 @@
     "NOTICE"
   ],
   "scripts": {
-    "build": "tsdown",
-    "prepare": "tsdown",
+    "build": "tsdown --config tsdown.config.js",
+    "prepare": "tsdown --config tsdown.config.js",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/**/*.test.ts",
     "lint": "tsc --noEmit"
