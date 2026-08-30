@@ -97,30 +97,32 @@ select.cc-input{appearance:none;-webkit-appearance:none;-moz-appearance:none;box
 .cc-accountLabel{max-width:200px}
 .cc-usageCard{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:14px;padding:16px 18px;flex-direction:column;gap:14px;display:flex}
 .cc-usageHead{align-items:center;gap:8px;display:flex}
-.cc-usageTitle{color:var(--dsw-alias-label-primary);flex:1;margin:0;font-size:14px;font-weight:600;line-height:1.5}
-.cc-usageAccount{max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;padding:2px 10px;font-size:11px;font-weight:500;line-height:18px}
-.cc-usagePlan{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-brand-primary);border-radius:999px;padding:2px 10px;font-size:11px;font-weight:600;line-height:18px}
-.cc-usageRefresh{font:inherit;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;padding:0;font-size:12px;line-height:1.5;transition:color .15s ease}
+.cc-usageTitle{color:var(--dsw-alias-label-primary);flex:1;margin:0;font-size:15px;font-weight:600;line-height:1.5}
+.cc-usageAccount{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;padding:3px 12px;font-size:12px;font-weight:500;line-height:18px}
+.cc-usagePlan{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-brand-primary);border-radius:999px;padding:3px 12px;font-size:12px;font-weight:600;line-height:18px}
+.cc-usageRefresh{font:inherit;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;padding:0 0 0 4px;font-size:12px;line-height:1.5;transition:color .15s ease}
 .cc-usageRefresh:hover:not(:disabled){color:var(--dsw-alias-label-primary)}
 .cc-usageRefresh:disabled{cursor:default;opacity:.4}
 .cc-usageHint{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px;line-height:1.5}
 .cc-usageError{align-items:center;gap:8px;color:var(--dsw-alias-label-error);margin:0;font-size:12px;line-height:1.5;display:flex}
-.cc-usageStats{grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;display:grid}
-.cc-usageStat{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);border-radius:10px;padding:10px 12px;flex-direction:column;gap:2px;display:flex}
-.cc-usageStatLabel{color:var(--dsw-alias-label-tertiary);font-size:11px;line-height:1.5}
-.cc-usageStatValue{color:var(--dsw-alias-label-primary);font-size:16px;font-weight:600;line-height:1.4}
-.cc-usageWindows{flex-direction:column;gap:14px;display:flex}
+.cc-statGrid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;display:grid}
+.cc-stat{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);border-radius:12px;padding:12px 14px;flex-direction:column;gap:4px;display:flex;min-width:0;transition:border-color .15s ease}
+.cc-stat:hover{border-color:var(--dsw-alias-border-l1)}
+.cc-statLabel{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:1.4}
+.cc-statValue{color:var(--dsw-alias-label-primary);font-size:20px;font-weight:600;line-height:1.3;letter-spacing:-.01em}
+.cc-statSub{color:var(--dsw-alias-label-tertiary);font-size:11px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cc-usageWindows{flex-direction:column;gap:16px;display:flex}
 .cc-usageWindow{flex-direction:column;gap:6px;display:flex}
 .cc-usageWindowHead{align-items:baseline;gap:8px;display:flex}
-.cc-usageWindowLabel{color:var(--dsw-alias-label-secondary);flex:1;font-size:12px;font-weight:500;line-height:1.5}
-.cc-usageWindowValue{color:var(--dsw-alias-label-primary);font-size:12px;font-weight:500;line-height:1.5}
+.cc-usageWindowLabel{color:var(--dsw-alias-label-secondary);font-size:13px;font-weight:500;line-height:1.5}
+.cc-usageWindowValue{color:var(--dsw-alias-label-primary);font-size:13px;font-weight:500;line-height:1.5;font-variant-numeric:tabular-nums}
+.cc-usageResets{color:var(--dsw-alias-label-tertiary);margin:0;font-size:11px;line-height:1.5}
 .cc-usageExceeded{color:var(--dsw-alias-label-error);font-size:11px;font-weight:600;line-height:1.5}
 .cc-usageBar{overflow:hidden;background:var(--dsw-alias-bg-layer-1);border-radius:999px;height:6px}
 .cc-usageBarFill{background:var(--dsw-alias-brand-primary);border-radius:999px;height:100%;transition:width .3s ease}
 .cc-usageBarFillWarn{background:var(--dsw-alias-label-error)}
-.cc-usageMeta{align-items:center;gap:8px;display:flex;flex-wrap:wrap}
 .cc-usageMetaSpacer{flex:1}
-.cc-usageUpdated{color:var(--dsw-alias-label-tertiary);margin:0;font-size:11px;line-height:1.5}
+.cc-usageFooter{align-items:center;gap:14px;flex-wrap:wrap;display:flex;color:var(--dsw-alias-label-tertiary);font-size:11px;line-height:1.5;font-variant-numeric:tabular-nums}
 .cc-usagePartial{color:var(--dsw-alias-state-warning-primary,var(--dsw-alias-label-secondary));margin:0;font-size:11px;line-height:1.5}
 .cc-usageBlocked{border:1px solid var(--dsw-alias-label-error);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
 .cc-usageBlockedTitle{color:var(--dsw-alias-label-error);margin:0;font-size:13px;font-weight:600;line-height:1.5}
@@ -210,6 +212,9 @@ export function apply(ctx: Context): void {
   ctx.effect(() => () => usageController.dispose(), 'dsh-commandcode: usage controller')
   const usageStore = createSnapshotStore<UsagePageState>(usageController.state())
   usageController.subscribe(() => usageStore.set(usageController.state()))
+  // Load the report once on mount so the panel opens with data instead of
+  // an empty hint; later loads are user-triggered (刷新 / save).
+  void usageController.refresh()
 
   const loginController = new CommandCodeLoginController(loginRemote)
   ctx.effect(() => () => loginController.dispose(), 'dsh-commandcode: login controller')
@@ -236,6 +241,7 @@ export function apply(ctx: Context): void {
     editAccountKey: (id: string, text: string) => controller.editAccountKey(id, text),
     toggleKeyClear: (id: string) => controller.toggleKeyClear(id),
     setFilterModels: (value: boolean) => controller.setFilterModels(value),
+    selectUsageAccount: (id: string) => usageController.selectAccount(id),
     t: (key: keyof ClientLocale) => t()(key),
   })
 

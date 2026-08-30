@@ -5,6 +5,17 @@ All notable changes to **dsh-commandcode** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-08-30
+
+### Changed
+
+- **用量与套餐面板对照设计稿重做**：头部账户 chip + 套餐徽标 + 刷新；四张统计卡（请求/成功率/花费/Token 入出分解）；三张额度卡（月额度/已购/赠送）；5 小时与每周窗口进度条（金额制，重置时间仅在未来时显示）；页脚账期截止与更新时间；账户标签页真正可切换；面板挂载时自动加载一次数据
+
+### Fixed
+
+- 成功率显示：API 返回的已是百分数，设置页与 /commandcode 命令此前又乘 100（会显示 10000%）
+- 账期截止：订阅接口返回 ISO 时间字符串，此前按数字解析导致永远为空
+
 ## [1.1.0] - 2026-08-30
 
 ### Changed

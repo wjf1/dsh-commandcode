@@ -658,12 +658,15 @@ export class CommandCodeAdapter<C extends CommandCodeConnectionOptions = Command
           const planSource = isRecord(body.data) ? body.data : body
           const planId = stringValue(planSource.planId) ?? stringValue(planSource.id) ?? ''
           const known = KNOWN_SUBSCRIPTION_PLANS[planId]
+          // currentPeriodEnd arrives as an ISO timestamp string.
+          const rawPeriodEnd = planSource.currentPeriodEnd
           report.plan = {
             planId,
             name: known?.name ?? stringValue(planSource.name) ?? planId,
             status: stringValue(planSource.status) ?? '',
             monthlyCredits: known?.monthlyCredits ?? null,
-            currentPeriodEnd: numberValue(planSource.currentPeriodEnd) ?? 0,
+            currentPeriodEnd: numberValue(rawPeriodEnd)
+              ?? (typeof rawPeriodEnd === 'string' ? Date.parse(rawPeriodEnd) || 0 : 0),
           }
         }
       } catch (error) {

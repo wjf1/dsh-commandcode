@@ -53,8 +53,19 @@ export interface ClientLocale {
   totalRequests: string
   successRate: string
   totalCost: string
+  usageTokensLabel: string
   tokensIn: string
   tokensOut: string
+  usageFailed: string
+  usageCreditsUnit: string
+  usageMonthly: string
+  usagePurchased: string
+  usageFree: string
+  usage5hWindow: string
+  usageWeeklyWindow: string
+  usageResetsAt: string
+  usagePeriodEnds: string
+  usageExceeded: string
   loginTitle: string
   loginButton: string
   loginBegin: string
@@ -125,11 +136,22 @@ export const zh: ClientLocale = {
   usageBlockedNetwork: '网络连接失败，请检查网络',
   usagePartial: '部分数据获取失败',
   usageUpdated: '更新于',
-  totalRequests: '总请求数',
+  totalRequests: '请求',
   successRate: '成功率',
-  totalCost: '总费用',
-  tokensIn: '输入 tokens',
-  tokensOut: '输出 tokens',
+  totalCost: '花费',
+  usageTokensLabel: 'Token',
+  tokensIn: '入',
+  tokensOut: '出',
+  usageFailed: '失败',
+  usageCreditsUnit: 'credits',
+  usageMonthly: '月额度',
+  usagePurchased: '已购',
+  usageFree: '赠送',
+  usage5hWindow: '5 小时窗口',
+  usageWeeklyWindow: '每周窗口',
+  usageResetsAt: '重置于',
+  usagePeriodEnds: '账期截止',
+  usageExceeded: '已超限',
   loginTitle: '快捷登录',
   loginButton: '使用浏览器登录',
   loginBegin: '开始登录',
@@ -200,11 +222,22 @@ export const en: ClientLocale = {
   usageBlockedNetwork: 'Network connection failed. Check your connection.',
   usagePartial: 'Some data failed to load',
   usageUpdated: 'Updated',
-  totalRequests: 'Total Requests',
-  successRate: 'Success Rate',
-  totalCost: 'Total Cost',
-  tokensIn: 'Tokens In',
-  tokensOut: 'Tokens Out',
+  totalRequests: 'Requests',
+  successRate: 'Success rate',
+  totalCost: 'Spend',
+  usageTokensLabel: 'Tokens',
+  tokensIn: 'in',
+  tokensOut: 'out',
+  usageFailed: 'Failed',
+  usageCreditsUnit: 'credits',
+  usageMonthly: 'Monthly',
+  usagePurchased: 'Purchased',
+  usageFree: 'Bonus',
+  usage5hWindow: '5-hour window',
+  usageWeeklyWindow: 'Weekly window',
+  usageResetsAt: 'Resets',
+  usagePeriodEnds: 'Period ends',
+  usageExceeded: 'Exceeded',
   loginTitle: 'Quick Login',
   loginButton: 'Login with Browser',
   loginBegin: 'Start Login',

@@ -111,7 +111,7 @@ function renderUsageReport(report: CommandCodeAccountsReport, t: CommandLocale):
     if (r.usage) {
       lines.push('')
       lines.push(`  ${t.totalRequests}: ${r.usage.totalCount}`)
-      lines.push(`  ${t.successRate}: ${(r.usage.successRate * 100).toFixed(1)}%`)
+      lines.push(`  ${t.successRate}: ${r.usage.successRate.toFixed(1)}%`)
       lines.push(`  ${t.totalCost}: ${r.usage.totalCost.toFixed(4)}`)
       lines.push(`  ${t.tokensIn}: ${r.usage.totalTokensIn}`)
       lines.push(`  ${t.tokensOut}: ${r.usage.totalTokensOut}`)

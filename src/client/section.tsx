@@ -35,6 +35,7 @@ export interface CommandCodeSettingsPageProps {
   editAccountKey: (id: string, text: string) => void
   toggleKeyClear: (id: string) => void
   setFilterModels: (value: boolean) => void
+  selectUsageAccount: (id: string) => void
   t: (key: keyof ClientLocale) => string
 }
 
@@ -115,6 +116,8 @@ export function CommandCodeSettingsPage(props: CommandCodeSettingsPageProps): Re
       <div className="cc-usageCard">
         <div className="cc-usageHead">
           <span className="cc-usageTitle">{t('usageTitle')}</span>
+          <span className="cc-usageMetaSpacer" />
+          <UsageHeadMeta usage={usage} />
           <button
             className="cc-usageRefresh"
             onClick={() => props.refreshUsage()}
@@ -123,7 +126,7 @@ export function CommandCodeSettingsPage(props: CommandCodeSettingsPageProps): Re
             {usage.loading ? t('usageRefreshing') : t('usageRefresh')}
           </button>
         </div>
-        <UsageDisplay usage={usage} t={t} />
+        <UsageDisplay usage={usage} onSelectAccount={props.selectUsageAccount} t={t} />
       </div>
 
       <div className="cc-card">
@@ -244,11 +247,81 @@ export function CommandCodeSettingsPage(props: CommandCodeSettingsPageProps): Re
   )
 }
 
-function UsageDisplay({ usage, t }: { usage: UsagePageState; t: (key: keyof ClientLocale) => string }): React.ReactElement {
+/** Right side of the usage card head: selected account chip + plan badge. */
+function UsageHeadMeta({ usage }: { usage: UsagePageState }): React.ReactElement | null {
+  const selected = usage.accounts.find((a) => a.id === usage.selectedAccountId) ?? usage.accounts[0]
+  if (selected === undefined || !selected.configured) return null
+  const name = selected.report.account?.userName || selected.report.account?.name || selected.label
+  return (
+    <>
+      {name !== '' && <span className="cc-usageAccount">{name}</span>}
+      {selected.report.plan !== undefined && <span className="cc-usagePlan">{selected.report.plan.name}</span>}
+    </>
+  )
+}
+
+function formatTokens(n: number): string {
+  if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`
+  return String(Math.round(n))
+}
+
+function money(n: number): string {
+  return `$${n.toFixed(2)}`
+}
+
+function UsageWindow({ label, used, cap, exceeded, resetAt, t }: {
+  label: string
+  used: number
+  cap: number
+  exceeded: boolean
+  resetAt: number
+  t: (key: keyof ClientLocale) => string
+}): React.ReactElement {
+  const percent = cap > 0 ? Math.min(100, (used / cap) * 100) : 0
+  return (
+    <div className="cc-usageWindow">
+      <div className="cc-usageWindowHead">
+        <span className="cc-usageWindowLabel">{label}</span>
+        {exceeded && <span className="cc-usageExceeded">{t('usageExceeded')}</span>}
+        <span className="cc-usageMetaSpacer" />
+        <span className="cc-usageWindowValue">{money(used)} / {money(cap)}</span>
+      </div>
+      <div className="cc-usageBar">
+        <div
+          className={`cc-usageBarFill ${exceeded ? 'cc-usageBarFillWarn' : ''}`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+      {/* Show the reset time only while it is still ahead — a past stamp
+          means the window already rolled over. */}
+      {resetAt > Date.now() && (
+        <p className="cc-usageResets">{t('usageResetsAt')} {new Date(resetAt).toLocaleString()}</p>
+      )}
+    </div>
+  )
+}
+
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }): React.ReactElement {
+  return (
+    <div className="cc-stat">
+      <span className="cc-statLabel">{label}</span>
+      <span className="cc-statValue">{value}</span>
+      {sub !== undefined && <span className="cc-statSub">{sub}</span>}
+    </div>
+  )
+}
+
+function UsageDisplay({ usage, onSelectAccount, t }: {
+  usage: UsagePageState
+  onSelectAccount: (id: string) => void
+  t: (key: keyof ClientLocale) => string
+}): React.ReactElement {
   if (usage.loading && usage.accounts.length === 0) {
     return <p className="cc-usageHint">{t('usageRefreshing')}</p>
   }
-  if (usage.error && usage.accounts.length === 0) {
+  if (usage.error !== undefined && usage.accounts.length === 0) {
     return <p className="cc-usageError">{usage.error}</p>
   }
   if (usage.accounts.length === 0) {
@@ -256,112 +329,119 @@ function UsageDisplay({ usage, t }: { usage: UsagePageState; t: (key: keyof Clie
   }
 
   const selected = usage.accounts.find((a) => a.id === usage.selectedAccountId) ?? usage.accounts[0]
+  if (selected === undefined) {
+    return <p className="cc-usageHint">{t('usageNoAccounts')}</p>
+  }
+
+  const report = selected.report
+  const usageStats = report.usage
+  const credits = report.credits
+  const totalTokens = usageStats === undefined ? 0 : usageStats.totalTokensIn + usageStats.totalTokensOut
 
   return (
     <div className="cc-accountReport">
-      <div className="cc-tabs">
-        {usage.accounts.map((account) => (
-          <button
-            key={account.id}
-            className={`cc-tab ${account.id === selected?.id ? 'cc-tabActive' : ''}`}
-            onClick={() => { /* select handled by parent */ }}
-          >
-            {account.mark === 'rate-limit' && <span className="cc-tabDotWarn" />}
-            {account.mark === 'invalid-credential' && <span className="cc-tabDotError" />}
-            {account.active && <span className="cc-tabDotOk" />}
-            {account.label}
-          </button>
-        ))}
-      </div>
-
-      {selected && (
-        <div>
-          {!selected.configured && (
-            <p className="cc-usageHint">{t('usageNoAccounts')}</p>
-          )}
-          {selected.configured && selected.report.blocked === 'invalid-key' && (
-            <div className="cc-usageBlocked">
-              <p className="cc-usageBlockedTitle">{t('usageBlockedInvalidKey')}</p>
-            </div>
-          )}
-          {selected.configured && selected.report.blocked === 'service-unavailable' && (
-            <div className="cc-usageBlocked">
-              <p className="cc-usageBlockedTitle">{t('usageBlockedService')}</p>
-            </div>
-          )}
-          {selected.configured && selected.report.blocked === 'network' && (
-            <div className="cc-usageBlocked">
-              <p className="cc-usageBlockedTitle">{t('usageBlockedNetwork')}</p>
-            </div>
-          )}
-          {selected.configured && !selected.report.blocked && (
-            <>
-              <div className="cc-usageMeta">
-                {selected.report.account && (
-                  <span className="cc-usageAccount">{selected.report.account.userName || selected.report.account.name}</span>
-                )}
-                {selected.report.plan && (
-                  <span className="cc-usagePlan">{selected.report.plan.name}</span>
-                )}
-                <span className="cc-usageMetaSpacer" />
-                {usage.lastUpdated && (
-                  <span className="cc-usageUpdated">{t('usageUpdated')}: {new Date(usage.lastUpdated).toLocaleTimeString()}</span>
-                )}
-              </div>
-
-              {selected.report.credits && (
-                <div className="cc-usageWindows">
-                  <div className="cc-usageWindow">
-                    <div className="cc-usageWindowHead">
-                      <span className="cc-usageWindowLabel">5-Hour Window</span>
-                      <span className="cc-usageWindowValue">
-                        {selected.report.credits.fiveHour.used} / {selected.report.credits.fiveHour.cap}
-                      </span>
-                      {selected.report.credits.fiveHour.exceeded && (
-                        <span className="cc-usageExceeded">EXCEEDED</span>
-                      )}
-                    </div>
-                    <div className="cc-usageBar">
-                      <div
-                        className={`cc-usageBarFill ${selected.report.credits.fiveHour.exceeded ? 'cc-usageBarFillWarn' : ''}`}
-                        style={{ width: `${Math.min(100, (selected.report.credits.fiveHour.used / Math.max(1, selected.report.credits.fiveHour.cap)) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {selected.report.usage && (
-                <div className="cc-usageStats">
-                  <div className="cc-usageStat">
-                    <span className="cc-usageStatLabel">{t('totalRequests')}</span>
-                    <span className="cc-usageStatValue">{selected.report.usage.totalCount}</span>
-                  </div>
-                  <div className="cc-usageStat">
-                    <span className="cc-usageStatLabel">{t('successRate')}</span>
-                    <span className="cc-usageStatValue">{(selected.report.usage.successRate * 100).toFixed(0)}%</span>
-                  </div>
-                  <div className="cc-usageStat">
-                    <span className="cc-usageStatLabel">{t('totalCost')}</span>
-                    <span className="cc-usageStatValue">{selected.report.usage.totalCost.toFixed(4)}</span>
-                  </div>
-                  <div className="cc-usageStat">
-                    <span className="cc-usageStatLabel">{t('tokensIn')}</span>
-                    <span className="cc-usageStatValue">{selected.report.usage.totalTokensIn.toLocaleString()}</span>
-                  </div>
-                  <div className="cc-usageStat">
-                    <span className="cc-usageStatLabel">{t('tokensOut')}</span>
-                    <span className="cc-usageStatValue">{selected.report.usage.totalTokensOut.toLocaleString()}</span>
-                  </div>
-                </div>
-              )}
-
-              {selected.report.failures.length > 0 && (
-                <p className="cc-usagePartial">{t('usagePartial')}: {selected.report.failures.length} endpoint(s) failed</p>
-              )}
-            </>
-          )}
+      {usage.accounts.length > 1 && (
+        <div className="cc-tabs">
+          {usage.accounts.map((account) => (
+            <button
+              key={account.id}
+              className={`cc-tab ${account.id === selected.id ? 'cc-tabActive' : ''}`}
+              onClick={() => onSelectAccount(account.id)}
+            >
+              {account.mark === 'rate-limit' && <span className="cc-tabDotWarn" />}
+              {account.mark === 'invalid-credential' && <span className="cc-tabDotError" />}
+              {account.active && <span className="cc-tabDotOk" />}
+              {account.label}
+            </button>
+          ))}
         </div>
+      )}
+
+      {!selected.configured && (
+        <p className="cc-usageHint">{t('usageNoAccounts')}</p>
+      )}
+
+      {selected.configured && report.blocked === 'invalid-key' && (
+        <div className="cc-usageBlocked">
+          <p className="cc-usageBlockedTitle">{t('usageBlockedInvalidKey')}</p>
+        </div>
+      )}
+      {selected.configured && report.blocked === 'service-unavailable' && (
+        <div className="cc-usageBlocked">
+          <p className="cc-usageBlockedTitle">{t('usageBlockedService')}</p>
+        </div>
+      )}
+      {selected.configured && report.blocked === 'network' && (
+        <div className="cc-usageBlocked">
+          <p className="cc-usageBlockedTitle">{t('usageBlockedNetwork')}</p>
+        </div>
+      )}
+
+      {selected.configured && report.blocked === undefined && (
+        <>
+          {usageStats !== undefined && (
+            <div className="cc-statGrid">
+              <Stat
+                label={t('totalRequests')}
+                value={String(usageStats.totalCount)}
+                sub={`${t('usageFailed')} ${usageStats.failedCount}`}
+              />
+              <Stat label={t('successRate')} value={`${Math.round(usageStats.successRate)}%`} />
+              <Stat
+                label={t('totalCost')}
+                value={`$${usageStats.totalCost.toFixed(4)}`}
+                sub={`$${usageStats.totalCredits.toFixed(2)} ${t('usageCreditsUnit')}`}
+              />
+              <Stat
+                label={t('usageTokensLabel')}
+                value={formatTokens(totalTokens)}
+                sub={`${formatTokens(usageStats.totalTokensIn)} ${t('tokensIn')} / ${formatTokens(usageStats.totalTokensOut)} ${t('tokensOut')}`}
+              />
+            </div>
+          )}
+
+          {credits !== undefined && (
+            <div className="cc-statGrid">
+              <Stat label={t('usageMonthly')} value={money(credits.monthlyCredits)} />
+              <Stat label={t('usagePurchased')} value={money(credits.purchasedCredits)} />
+              <Stat label={t('usageFree')} value={money(credits.freeCredits)} />
+            </div>
+          )}
+
+          {credits !== undefined && (
+            <div className="cc-usageWindows">
+              <UsageWindow
+                label={t('usage5hWindow')}
+                used={credits.fiveHour.used}
+                cap={credits.fiveHour.cap}
+                exceeded={credits.fiveHour.exceeded}
+                resetAt={credits.fiveHour.resetAt}
+                t={t}
+              />
+              <UsageWindow
+                label={t('usageWeeklyWindow')}
+                used={credits.weekly.used}
+                cap={credits.weekly.cap}
+                exceeded={credits.weekly.exceeded}
+                resetAt={credits.weekly.resetAt}
+                t={t}
+              />
+            </div>
+          )}
+
+          <div className="cc-usageFooter">
+            {report.plan !== undefined && report.plan.currentPeriodEnd > 0 && (
+              <span>{t('usagePeriodEnds')} {new Date(report.plan.currentPeriodEnd).toLocaleDateString()}</span>
+            )}
+            {usage.lastUpdated !== undefined && (
+              <span>{t('usageUpdated')} {new Date(usage.lastUpdated).toLocaleTimeString()}</span>
+            )}
+          </div>
+
+          {report.failures.length > 0 && (
+            <p className="cc-usagePartial">{t('usagePartial')}: {report.failures.length}</p>
+          )}
+        </>
       )}
     </div>
   )
