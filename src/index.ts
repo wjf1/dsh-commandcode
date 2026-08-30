@@ -51,7 +51,7 @@ import {
 import type { CommandCodeAccountConfig } from './accounts.ts'
 import { applyCommands } from './commands.ts'
 import { applyUsageRemote } from './usage-remote.ts'
-import type { CommandCodeAccountsReport } from './usage-wire.ts'
+import type { CommandCodeAccountsReport, CommandCodeAccountUsage } from './usage-wire.ts'
 import { CommandCodeLoginFlow } from './login.ts'
 import type { CommandCodeLoginCredentials } from './login.ts'
 import { pickCommandLocale, type LocaleId } from './command-locales.ts'
@@ -95,15 +95,14 @@ export type { CommandCodeCommandDeps } from './commands.ts'
 export { applyUsageRemote, CommandCodeUsageService } from './usage-remote.ts'
 export type { CommandCodeUsageDeps, LoginFlowFacade } from './usage-remote.ts'
 
-export { USAGE_REPORT_ENDPOINT, usageReportSchema } from './usage-wire.ts'
+export { USAGE_REPORT_PATH, parseAccountsReport } from './usage-wire.ts'
 export type { CommandCodeAccountUsage, CommandCodeAccountsReport } from './usage-wire.ts'
 
 export {
-  LOGIN_BEGIN_ENDPOINT,
-  LOGIN_STATUS_ENDPOINT,
-  LOGIN_CANCEL_ENDPOINT,
+  LOGIN_BEGIN_PATH,
+  LOGIN_STATUS_PATH,
+  LOGIN_CANCEL_PATH,
   parseLoginStatus,
-  loginStatusSchema,
 } from './login-wire.ts'
 export type { CommandCodeLoginStatus, CommandCodeLoginFailureReason } from './login-wire.ts'
 
@@ -306,7 +305,7 @@ export function apply(ctx: Context, config: Config): void {
     const described = await pool.describeAccounts()
     const byId = new Map(described.map((a) => [a.slot.id, a]))
     const active = selectActiveAccount(await pool.resolvedAccounts(), preferredId())
-    const entries = await Promise.all(slots().map(async (slot) => {
+    const entries = await Promise.all(slots().map(async (slot): Promise<CommandCodeAccountUsage> => {
       const account = byId.get(slot.id)
       let report: CommandCodeUsageReport
       if (account === undefined) {
@@ -336,7 +335,7 @@ export function apply(ctx: Context, config: Config): void {
   // --- /commandcode command ---
   const commandLocale = (): LocaleId => pickCommandLocale(current().lang)
   ctx.inject(['commands'], (commandCtx) => {
-    applyCommands(commandCtx, { adapter, reports: usageReports, getLocale: commandLocale })
+    applyCommands(commandCtx, { reports: usageReports, getLocale: commandLocale })
   })
 
   // --- Login flow ---

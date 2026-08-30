@@ -31,7 +31,7 @@ export interface CommandLocale {
   tokensIn: string
   tokensOut: string
   noAccountsConfigured: string
-  noApiKey: string
+  noKeyFound: string
   fetchingUsage: string
   usageFetchFailed: string
   activeAccount: string
@@ -63,7 +63,7 @@ export const zh: CommandLocale = {
   tokensIn: '输入 Tokens',
   tokensOut: '输出 Tokens',
   noAccountsConfigured: '未配置任何账户，请在设置页面配置 API Key',
-  noApiKey: '未找到 API Key',
+  noKeyFound: '未找到 API Key',
   fetchingUsage: '正在获取用量数据…',
   usageFetchFailed: '用量数据获取失败',
   activeAccount: '当前账户',
@@ -95,7 +95,7 @@ export const en: CommandLocale = {
   tokensIn: 'Input Tokens',
   tokensOut: 'Output Tokens',
   noAccountsConfigured: 'No accounts configured. Set an API key in the settings page.',
-  noApiKey: 'No API key found',
+  noKeyFound: 'No API key found',
   fetchingUsage: 'Fetching usage data…',
   usageFetchFailed: 'Failed to fetch usage data',
   activeAccount: 'Active Account',

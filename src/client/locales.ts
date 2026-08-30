@@ -3,6 +3,13 @@
  * Registered under the `settings.commandcode` locale namespace.
  */
 
+/** Merge this plugin's namespace into the client locale table. */
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface LocaleNamespaceMap {
+    'settings.commandcode': keyof ClientLocale
+  }
+}
+
 export interface ClientLocale {
   nav: string
   title: string
@@ -10,6 +17,7 @@ export interface ClientLocale {
   connectionTitle: string
   apiKeyLabel: string
   apiKeyPlaceholder: string
+  apiKeyConfiguredPlaceholder: string
   apiKeyHint: string
   apiBaseLabel: string
   apiBasePlaceholder: string
@@ -42,6 +50,11 @@ export interface ClientLocale {
   usageBlockedNetwork: string
   usagePartial: string
   usageUpdated: string
+  totalRequests: string
+  successRate: string
+  totalCost: string
+  tokensIn: string
+  tokensOut: string
   loginTitle: string
   loginButton: string
   loginBegin: string
@@ -58,7 +71,6 @@ export interface ClientLocale {
   cardConfigure: string
   cardUsage: string
   cardLogin: string
-  invalidApiKey: string
   invalidApiBase: string
   invalidTimeout: string
   save: string
@@ -79,7 +91,8 @@ export const zh: ClientLocale = {
   intro: '配置 Command Code API 凭证、连接参数和多账户轮换。所有更改即时生效，无需重启。',
   connectionTitle: '连接配置',
   apiKeyLabel: 'API Key',
-  apiKeyPlaceholder: 'sk-... 或从环境变量读取',
+  apiKeyPlaceholder: '输入新的 API Key 以替换',
+  apiKeyConfiguredPlaceholder: '已保存（输入新值可替换）',
   apiKeyHint: '也可设置环境变量 COMMANDCODE_API_KEY，或使用下方登录流程自动获取。',
   apiBaseLabel: 'API 地址',
   apiBasePlaceholder: 'https://api.commandcode.ai',
@@ -112,6 +125,11 @@ export const zh: ClientLocale = {
   usageBlockedNetwork: '网络连接失败，请检查网络',
   usagePartial: '部分数据获取失败',
   usageUpdated: '更新于',
+  totalRequests: '总请求数',
+  successRate: '成功率',
+  totalCost: '总费用',
+  tokensIn: '输入 tokens',
+  tokensOut: '输出 tokens',
   loginTitle: '快捷登录',
   loginButton: '使用浏览器登录',
   loginBegin: '开始登录',
@@ -128,7 +146,6 @@ export const zh: ClientLocale = {
   cardConfigure: '配置',
   cardUsage: '查看用量',
   cardLogin: '登录',
-  invalidApiKey: 'API Key 格式不正确',
   invalidApiBase: 'API 地址格式不正确',
   invalidTimeout: '超时时间必须为正整数',
   save: '保存',
@@ -149,7 +166,8 @@ export const en: ClientLocale = {
   intro: 'Configure Command Code API credentials, connection parameters, and multi-account rotation. All changes take effect immediately without restart.',
   connectionTitle: 'Connection',
   apiKeyLabel: 'API Key',
-  apiKeyPlaceholder: 'sk-... or read from env',
+  apiKeyPlaceholder: 'Enter a new API key to replace it',
+  apiKeyConfiguredPlaceholder: 'Saved (type to replace)',
   apiKeyHint: 'You can also set the COMMANDCODE_API_KEY environment variable, or use the login flow below.',
   apiBaseLabel: 'API Base URL',
   apiBasePlaceholder: 'https://api.commandcode.ai',
@@ -182,6 +200,11 @@ export const en: ClientLocale = {
   usageBlockedNetwork: 'Network connection failed. Check your connection.',
   usagePartial: 'Some data failed to load',
   usageUpdated: 'Updated',
+  totalRequests: 'Total Requests',
+  successRate: 'Success Rate',
+  totalCost: 'Total Cost',
+  tokensIn: 'Tokens In',
+  tokensOut: 'Tokens Out',
   loginTitle: 'Quick Login',
   loginButton: 'Login with Browser',
   loginBegin: 'Start Login',
@@ -198,7 +221,6 @@ export const en: ClientLocale = {
   cardConfigure: 'Configure',
   cardUsage: 'View Usage',
   cardLogin: 'Login',
-  invalidApiKey: 'Invalid API key format',
   invalidApiBase: 'Invalid API base URL',
   invalidTimeout: 'Timeout must be a positive integer',
   save: 'Save',

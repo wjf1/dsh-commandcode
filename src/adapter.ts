@@ -27,15 +27,16 @@ import { existsSync, readFileSync } from 'node:fs'
 import type { AttachmentStore, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import {
   attributionHeaders,
-  CallId,
   LlmAdapter,
   LlmError,
-  errorChain,
+  ReasoningEffortId,
+  ToolCallId,
   type ContentBlock,
   type FinishReason,
   type GenerateOptions,
   type LlmModelInfo,
   type LlmProviderInfo,
+  type LlmReasoningEffortInfo,
   type LlmResolvedModelInfo,
   type Message,
   type StreamChunk,
@@ -353,12 +354,10 @@ function mapFinishReason(reason: unknown): FinishReason {
       case 'end_turn':
         return { kind: 'stop' }
       case 'length':
-        return { kind: 'length' }
+        return { kind: 'max-tokens' }
       case 'tool_calls':
       case 'tool_call':
         return { kind: 'tool-calls' }
-      case 'content_filter':
-        return { kind: 'content-filter' }
     }
   }
   return { kind: 'stop' }
@@ -546,7 +545,13 @@ export class CommandCodeAdapter<C extends CommandCodeConnectionOptions = Command
             defaultMaxTokens: Math.min(entry.maxTokens, DEFAULT_GENERATE_MAX_TOKENS),
           }
         : {}),
-      ...(efforts ? { reasoning: { efforts: [...efforts] } } : {}),
+      ...(efforts
+        ? {
+            reasoning: {
+              efforts: efforts.map((id): LlmReasoningEffortInfo => ({ id: ReasoningEffortId(id), name: id })),
+            },
+          }
+        : {}),
     }
   }
 
@@ -958,8 +963,8 @@ export class CommandCodeAdapter<C extends CommandCodeConnectionOptions = Command
           const index = 2
           chunks.push(
             { type: 'block-start', index, blockType: 'tool-call' },
-            { type: 'tool-call-delta', index, id: CallId(id), name, argumentsDelta: args },
-            { type: 'block-end', index, block: { type: 'tool-call', id: CallId(id), name, arguments: args } },
+            { type: 'tool-call-delta', index, id: ToolCallId(id), name, argumentsDelta: args },
+            { type: 'block-end', index, block: { type: 'tool-call', id: ToolCallId(id), name, arguments: args } },
           )
           break
         }

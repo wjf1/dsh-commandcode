@@ -247,7 +247,9 @@ export class CommandCodeLoginFlow {
   private async processCallback(url: URL, body: string, res: ServerResponse): Promise<void> {
     try {
       // Extract API key from query string or POST body
-      let apiKey = url.searchParams.get('api_key') ?? url.searchParams.get('apiKey') ?? url.searchParams.get('key')
+      let apiKey: string | null | undefined = url.searchParams.get('api_key')
+        ?? url.searchParams.get('apiKey')
+        ?? url.searchParams.get('key')
 
       if (!apiKey && body.length > 0) {
         try {

@@ -1,10 +1,10 @@
 # dsh-commandcode
 
-> 面向 [Command Code](https://commandcode.ai) 的增强版 DSH-Desktop LLM 提供商插件。在完整对标 `dsh-commandcode-provider` 核心能力的基础上，提供更健壮的模型目录同步、可配置的超时与重试、多凭证环境支持，以及适配 DSH-Desktop 0.7.1 的精致界面。
+> 面向 [Command Code](https://commandcode.ai) 的增强版 DSH-Desktop LLM 提供商插件。在完整对标 `dsh-commandcode-provider` 核心能力的基础上，提供更健壮的模型目录同步、可配置的超时与重试、多凭证环境支持，以及适配 DSH-Desktop 0.7.x（DeepSeek Harness 0.1.2-alpha.1）的精致界面。
 
 [![CI](https://github.com/wjf1/dsh-commandcode/actions/workflows/ci.yml/badge.svg)](https://github.com/wjf1/dsh-commandcode/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node](https://img.shields.io/badge/node-%3E%3D22-green.svg)](https://nodejs.org/)
+[![Node](https://img.shields.io/badge/node-%3E%3D20-green.svg)](https://nodejs.org/)
 
 [English](README.md) | [中文](README.zh-CN.md)
 
@@ -36,7 +36,7 @@
 - **逐账户用量标签页** — 在账户间切换查看各自的用量和套餐状态
 
 ### 版本适配
-- **兼容 DSH-Desktop 0.7.1** — 遵循 bundle 加载机制（`dsh.profile.bundles`）和客户端注入规范
+- **兼容 DeepSeek Harness 0.1.2-alpha.1** — 面向 DSH Desktop 0.7.x：使用 `@deepseek-ai/dsh-client-store`（接替已删除的 `dsh-client-runtime`）、响应式 `SettingsScope` 快照契约、`credentials` Remote 命名空间，用量/登录后端走共享 `/api` 精确 Fetch 路由
 - **一键安装** — 添加到 profile 的 `dsh.profile.bundles` 后重启即可，无需手动构建
 - **TypeScript 构建** — 通过 `tsdown` 可复现构建，输出 ESM 格式和类型声明
 
@@ -45,8 +45,8 @@
 ## 安装
 
 ### 前置要求
-- DSH-Desktop >= 0.7.1
-- Node.js >= 22（仅开发/构建需要；桌面应用自带运行时）
+- DSH-Desktop >= 0.7.0（DeepSeek Harness 0.1.2-alpha.1）
+- Node.js >= 20（仅开发/构建需要；桌面应用自带运行时）
 - 一个 Command Code 账户和 API Key 或订阅
 
 ### 快速安装（Profile Bundle）

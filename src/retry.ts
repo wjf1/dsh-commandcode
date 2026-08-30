@@ -133,7 +133,8 @@ export function sleep(ms: number, signal?: AbortSignal): Promise<void> {
     }, ms)
     const onAbort = () => {
       clearTimeout(timer)
-      reject(signal.reason)
+      // onAbort is only registered for a defined signal (see addEventListener below).
+      reject((signal as AbortSignal).reason)
     }
     signal?.addEventListener('abort', onAbort, { once: true })
   })

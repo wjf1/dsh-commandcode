@@ -1,25 +1,35 @@
 /**
- * Usage remote service — exposes the per-account usage report and login
- * flow through the Typert Gateway.
+ * Usage remote service — exposes the per-account usage report and the login
+ * flow to the web client over the shared `/api` Fetch channel.
  *
- * Rides the optional `typert` registry service; profiles without the web
- * stack never activate it.
+ * 0.1.2-aplha note: the old `ctx.typert.register(path, handler)` endpoint
+ * registration no longer exists. The public seam for Host features that serve
+ * the browser is `connection.fetch.register()` — the same exact-Fetch-route
+ * registry upstream's `/api/session.export` uses. Routes are exact-path and
+ * GET-only by contract, so the three login operations are three GET routes;
+ * each carries the flow state back as JSON. The carrier applies its trust and
+ * browser-authentication policy before a handler runs, so these routes are
+ * never reachable without an authenticated session.
+ *
+ * Rides the optional `connection` service; profiles without a web stack never
+ * activate the routes.
  */
 
 import type { Context } from '@deepseek-ai/cordis'
+import type { ConnectionFetchRoute } from '@deepseek-ai/dsh-client-connection'
 import type { CommandCodeAdapter, CommandCodeUsageReport } from './adapter.ts'
 import type { CommandCodeAccountsReport } from './usage-wire.ts'
-import { USAGE_REPORT_ENDPOINT } from './usage-wire.ts'
+import { USAGE_REPORT_PATH } from './usage-wire.ts'
 import type { CommandCodeLoginFlow, CommandCodeLoginCredentials } from './login.ts'
 import {
-  LOGIN_BEGIN_ENDPOINT,
-  LOGIN_STATUS_ENDPOINT,
-  LOGIN_CANCEL_ENDPOINT,
+  LOGIN_BEGIN_PATH,
+  LOGIN_STATUS_PATH,
+  LOGIN_CANCEL_PATH,
 } from './login-wire.ts'
 
 /** Dependencies for the usage remote. */
 export interface CommandCodeUsageDeps {
-  adapter: CommandCodeAdapter
+  adapter: Pick<CommandCodeAdapter, 'getUsage'>
   reports: () => Promise<CommandCodeAccountsReport>
   login: CommandCodeLoginFlow
 }
@@ -31,29 +41,81 @@ export interface LoginFlowFacade {
   getStatus: () => unknown
 }
 
+function jsonResponse(value: unknown): Response {
+  return new Response(JSON.stringify(value), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  })
+}
+
+function errorResponse(error: unknown): Response {
+  return new Response(JSON.stringify({
+    error: error instanceof Error ? error.message : String(error),
+  }), {
+    status: 500,
+    headers: { 'content-type': 'application/json' },
+  })
+}
+
 /**
- * Apply the usage remote: register the Typert Gateway endpoints.
+ * Apply the usage remote: register the `/api/commandcode/*` Fetch routes.
  */
 export function applyUsageRemote(ctx: Context, deps: CommandCodeUsageDeps): void {
-  const typert = ctx.get('typert')
-  if (typert === undefined) return
+  ctx.inject(['connection'], (connectionCtx) => {
+    const connection = connectionCtx.get('connection') as {
+      fetch: { register: (route: ConnectionFetchRoute) => () => Promise<void> }
+    }
 
-  // Usage report endpoint
-  typert.register(USAGE_REPORT_ENDPOINT, async () => {
-    return deps.reports()
-  })
+    const routes: ConnectionFetchRoute[] = [
+      {
+        path: USAGE_REPORT_PATH,
+        methods: ['GET'],
+        fetch: async () => {
+          try {
+            return jsonResponse(await deps.reports())
+          } catch (error) {
+            return errorResponse(error)
+          }
+        },
+      },
+      {
+        path: LOGIN_BEGIN_PATH,
+        methods: ['GET'],
+        fetch: async () => {
+          try {
+            return jsonResponse(await deps.login.begin())
+          } catch (error) {
+            return errorResponse(error)
+          }
+        },
+      },
+      {
+        path: LOGIN_STATUS_PATH,
+        methods: ['GET'],
+        fetch: async () => {
+          try {
+            return jsonResponse(deps.login.getStatus())
+          } catch (error) {
+            return errorResponse(error)
+          }
+        },
+      },
+      {
+        path: LOGIN_CANCEL_PATH,
+        methods: ['GET'],
+        fetch: async () => {
+          try {
+            return jsonResponse(await deps.login.cancel())
+          } catch (error) {
+            return errorResponse(error)
+          }
+        },
+      },
+    ]
 
-  // Login flow endpoints
-  typert.register(LOGIN_BEGIN_ENDPOINT, async () => {
-    return deps.login.begin()
-  })
-
-  typert.register(LOGIN_STATUS_ENDPOINT, async () => {
-    return deps.login.getStatus()
-  })
-
-  typert.register(LOGIN_CANCEL_ENDPOINT, async () => {
-    return deps.login.cancel()
+    for (const route of routes) {
+      connectionCtx.effect(() => connection.fetch.register(route), `dsh-commandcode: ${route.path}`)
+    }
   })
 }
 

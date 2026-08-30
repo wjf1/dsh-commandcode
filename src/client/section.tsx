@@ -8,18 +8,20 @@
  * - Usage & plan display (per-account tabs)
  */
 
-import React, { useMemo } from 'react'
+import React from 'react'
+import { PLUGIN_VERSION } from './version.ts'
 import type { SettingsPageState } from './settings.ts'
 import type { UsagePageState } from './usage.ts'
 import type { LoginPageState } from './login.ts'
 import type { ClientLocale } from './locales.ts'
 
+/** Props injected by the slot registration (hooks compartment → selector hooks). */
 export interface CommandCodeSettingsPageProps {
-  hooks: {
-    commandCodeSettings: { get: () => SettingsPageState }
-    commandCodeUsage: { get: () => UsagePageState }
-    commandCodeLogin: { get: () => LoginPageState }
-  }
+  /** Owner share of the settings.section slot (supplied by the settings shell). */
+  close?: () => void
+  useCommandCodeSettings: <S>(sel: (s: SettingsPageState) => S) => S
+  useCommandCodeUsage: <S>(sel: (s: UsagePageState) => S) => S
+  useCommandCodeLogin: <S>(sel: (s: LoginPageState) => S) => S
   edit: (field: string, text: string) => void
   resetField: (field: string) => void
   save: () => void
@@ -32,14 +34,15 @@ export interface CommandCodeSettingsPageProps {
   editAccountLabel: (id: string, text: string) => void
   editAccountKey: (id: string, text: string) => void
   toggleKeyClear: (id: string) => void
+  setFilterModels: (value: boolean) => void
   t: (key: keyof ClientLocale) => string
 }
 
 export function CommandCodeSettingsPage(props: CommandCodeSettingsPageProps): React.ReactElement {
-  const { hooks, t } = props
-  const settings = hooks.commandCodeSettings.get()
-  const usage = hooks.commandCodeUsage.get()
-  const login = hooks.commandCodeLogin.get()
+  const { t } = props
+  const settings = props.useCommandCodeSettings((s) => s)
+  const usage = props.useCommandCodeUsage((s) => s)
+  const login = props.useCommandCodeLogin((s) => s)
 
   return (
     <div className="cc-section">
@@ -50,14 +53,14 @@ export function CommandCodeSettingsPage(props: CommandCodeSettingsPageProps): Re
         <div className="cc-field">
           <div className="cc-fieldHead">
             <label className="cc-label" htmlFor="cc-api-key">{t('apiKeyLabel')}</label>
-            {settings.apiKey && <span className="cc-badge">{t('cardConfigured')}</span>}
+            {settings.apiKeyConfigured && <span className="cc-badge">{t('cardConfigured')}</span>}
           </div>
           <input
             id="cc-api-key"
             className={`cc-input ${settings.errors.apiKey ? 'cc-inputInvalid' : ''}`}
             type="password"
             value={settings.apiKey}
-            placeholder={t('apiKeyPlaceholder')}
+            placeholder={settings.apiKeyConfigured ? t('apiKeyConfiguredPlaceholder') : t('apiKeyPlaceholder')}
             onChange={(e) => props.edit('apiKey', e.target.value)}
             autoComplete="off"
             spellCheck={false}
@@ -197,10 +200,7 @@ export function CommandCodeSettingsPage(props: CommandCodeSettingsPageProps): Re
                   type="checkbox"
                   className="cc-toggle"
                   checked={settings.filterModelsByPlan}
-                  onChange={(e) => {
-                    // Toggle handled via edit with boolean conversion
-                    const event = { target: { value: String(!settings.filterModelsByPlan) } }
-                  }}
+                  onChange={(e) => props.setFilterModels(e.target.checked)}
                 />
                 <span className="cc-label">{t('filterModelsLabel')}</span>
               </div>
@@ -238,7 +238,7 @@ export function CommandCodeSettingsPage(props: CommandCodeSettingsPageProps): Re
       </div>
 
       <p className="cc-version">
-        {t('version')} 1.0.0
+        {t('version')} {PLUGIN_VERSION}
       </p>
     </div>
   )

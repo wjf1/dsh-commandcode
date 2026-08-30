@@ -5,6 +5,30 @@ All notable changes to **dsh-commandcode** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-08-30
+
+### Changed
+
+- **Adapted to DeepSeek Harness `0.1.2-alpha.1`** (bundled by DSH Desktop 0.7.x)
+  - `LlmAdapter` surface: `CallId` renamed to `ToolCallId`; finish reasons now use the `max-tokens` union member; reasoning efforts are declared as typed `LlmReasoningEffortInfo` entries
+  - Client: `@deepseek-ai/dsh-client-runtime` was deleted upstream — snapshot stores now come from `@deepseek-ai/dsh-client-store`
+  - Client: settings pages bind the reactive `SettingsScope` snapshot contract (`getSnapshot`/`set`/`unset`) and slot components consume the injected `hooks` compartment as `use<Name>` selector hooks
+  - Client: stored API keys are write-only again (secrets no longer ride the credentials Remote view); the page shows a configured badge and accepts a replacement key
+  - Host: the usage report and login flow are served through the shared `/api` exact-Fetch-route registry (`connection.fetch.register`) after `ctx.typert.register(path, handler)` disappeared — routes: `GET /api/commandcode/report`, `GET /api/commandcode/login/{begin,status,cancel}`
+  - `CredentialRef` is a branded string; slot ids and diagnostics follow the new shape
+- Vendor the `0.1.2-alpha.1` package closure under `vendor/` (file: devDependencies) so `npm ci`, tests, and builds stay reproducible until upstream publishes the release to npm
+
+### Fixed
+
+- `tsc --noEmit` had never been runnable: the tsconfig lacked `allowImportingTsExtensions`, so the whole codebase now typechecks clean against `0.1.2-alpha.1`
+- `/commandcode` command crashed at runtime (`require()` inside an ESM module) — locale strings are imported statically now
+- Test suite used the `node:test` `assert` export which lacks `.equal`; tests now use `node:assert/strict` (29/29 pass)
+- Settings controller: invalid `CredentialRef` casts removed; catalog background refresh and retry sleep type errors fixed
+
+### Removed
+
+- The aspirational Typert Remote contribution that never matched the generated-descriptor contract on either side of the wire, and the no-op client fetch wrapper
+
 ## [1.0.0] - 2026-08-30
 
 ### Added

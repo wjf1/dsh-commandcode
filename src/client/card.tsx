@@ -9,12 +9,14 @@ import type { SettingsPageState } from './settings.ts'
 import type { LoginPageState } from './login.ts'
 import type { ClientLocale } from './locales.ts'
 
-/** Props injected by the slot registration. */
+/** Props injected by the slot registration (hooks compartment → selector hooks). */
 export interface CommandCodeProviderCardProps {
-  hooks: {
-    commandCodeSettings: { get: () => SettingsPageState }
-    commandCodeLogin: { get: () => LoginPageState }
-  }
+  /** Owner share of the provider-card slot (supplied by the Models page). */
+  provider?: unknown
+  configured?: boolean
+  keyConfigured?: boolean
+  useCommandCodeSettings: <S>(sel: (s: SettingsPageState) => S) => S
+  useCommandCodeLogin: <S>(sel: (s: LoginPageState) => S) => S
   edit: (field: string, text: string) => void
   save: () => void
   beginLogin: () => void
@@ -23,16 +25,16 @@ export interface CommandCodeProviderCardProps {
 }
 
 export function CommandCodeProviderCard(props: CommandCodeProviderCardProps): React.ReactElement {
-  const { hooks, t } = props
-  const settings = hooks.commandCodeSettings.get()
-  const login = hooks.commandCodeLogin.get()
+  const { t } = props
+  const settings = props.useCommandCodeSettings((s) => s)
+  const login = props.useCommandCodeLogin((s) => s)
 
   return (
     <div className="cc-card">
       <div className="cc-field">
         <div className="cc-fieldHead">
           <span className="cc-label">{t('cardTitle')}</span>
-          {settings.anyAccountConfigured ? (
+          {settings.apiKeyConfigured || settings.anyAccountConfigured ? (
             <span className="cc-badge">{t('cardConfigured')}</span>
           ) : (
             <span className="cc-badgeMuted">{t('cardNotConfigured')}</span>
@@ -50,9 +52,9 @@ export function CommandCodeProviderCard(props: CommandCodeProviderCardProps): Re
           className="cc-input"
           type="password"
           value={settings.apiKey}
-          placeholder={t('apiKeyPlaceholder')}
+          placeholder={settings.apiKeyConfigured ? t('apiKeyConfiguredPlaceholder') : t('apiKeyPlaceholder')}
           onChange={(e) => props.edit('apiKey', e.target.value)}
-          onBlur={() => { if (settings.dirty) props.save() }}
+          onBlur={() => { if (settings.apiKey.length > 0) props.save() }}
           autoComplete="off"
           spellCheck={false}
         />

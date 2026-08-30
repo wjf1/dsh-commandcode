@@ -1,9 +1,18 @@
 /**
  * Settings controller — manages the settings page state, validation, and
- * persistence through the credentials domain and settings namespace.
+ * persistence through the settings-namespace scope and the credentials
+ * Remote namespace.
+ *
+ * 0.1.2-alpha note: the scope is the reactive snapshot handle from
+ * `dsh-client-ui-settings` (`getSnapshot`/`set`/`unset`), and the credentials
+ * seam no longer returns secret values to the browser — the page reads a
+ * configured/writable view (`credentials.describe`) and writes through
+ * `credentials.set`. The stored API key is therefore never displayed; the
+ * key input only accepts a replacement.
  */
 
-import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
+import type { CredentialInfo } from '@deepseek-ai/dsh-credentials/types'
+import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 
 /** Settings namespace for the llm-commandcode section. */
 export const COMMANDCODE_NS = 'llm-commandcode'
@@ -19,8 +28,10 @@ export interface AccountFormEntry {
 
 /** Settings page state. */
 export interface SettingsPageState {
+  /** Replacement key typed into the input; write-only, never read back. */
   apiKey: string
   apiKeyEnv: string
+  apiKeyConfigured: boolean
   apiBase: string
   workingDir: string
   requestTimeoutMs: string
@@ -30,6 +41,7 @@ export interface SettingsPageState {
   lang: string
   accounts: AccountFormEntry[]
   activeAccount: string
+  status: 'loading' | 'ready' | 'unavailable'
   dirty: boolean
   saving: boolean
   saved: boolean
@@ -39,24 +51,25 @@ export interface SettingsPageState {
   errors: Record<string, string>
 }
 
-interface CredentialsApi {
-  get: (ref: CredentialRef) => Promise<{ value: string } | undefined>
-  set: (ref: CredentialRef, value: string) => Promise<void>
+/** Credentials view + write face (Remote namespace, RemoteResult-unwrapped). */
+export interface CredentialsFace {
+  describe: (refs: string[]) => Promise<Record<string, CredentialInfo> | undefined>
+  set: (ref: string, value: string) => Promise<void>
 }
 
-interface SettingsScope {
-  get: () => Record<string, unknown>
-  set: (patch: Record<string, unknown>) => Promise<void>
+type SectionValue = Record<string, unknown>
+
+/** Dependencies for the controller. */
+export interface ControllerDeps {
+  credentials: CredentialsFace
 }
 
-interface ControllerDeps {
-  credentials: CredentialsApi
-  hostDescription?: { platform?: string }
-}
+const DEFAULT_API_KEY_ENV = 'COMMANDCODE_API_KEY'
 
-const DEFAULT_STATE: SettingsPageState = {
+const EMPTY_STATE: SettingsPageState = {
   apiKey: '',
-  apiKeyEnv: 'COMMANDCODE_API_KEY',
+  apiKeyEnv: DEFAULT_API_KEY_ENV,
+  apiKeyConfigured: false,
   apiBase: '',
   workingDir: '',
   requestTimeoutMs: '',
@@ -66,6 +79,7 @@ const DEFAULT_STATE: SettingsPageState = {
   lang: 'zh',
   accounts: [],
   activeAccount: '',
+  status: 'loading',
   dirty: false,
   saving: false,
   saved: false,
@@ -78,13 +92,17 @@ const DEFAULT_STATE: SettingsPageState = {
 export class CommandCodeSettingsController {
   private stateValue: SettingsPageState
   private readonly listeners = new Set<() => void>()
+  private readonly unsubscribeScope: () => void
   private disposed = false
 
   constructor(
-    private readonly scope: SettingsScope,
+    private readonly scope: SettingsScope<SectionValue>,
     private readonly deps: ControllerDeps,
   ) {
-    this.stateValue = { ...DEFAULT_STATE }
+    this.stateValue = { ...EMPTY_STATE }
+    this.unsubscribeScope = this.scope.subscribe(() => {
+      if (!this.stateValue.dirty) this.absorbSnapshot()
+    })
     void this.load()
   }
 
@@ -103,6 +121,50 @@ export class CommandCodeSettingsController {
 
   private patch(partial: Partial<SettingsPageState>): void {
     this.stateValue = { ...this.stateValue, ...partial, dirty: true, saved: false, failed: false }
+    this.emit()
+  }
+
+  private section(): SectionValue {
+    return this.scope.getSnapshot().value ?? {}
+  }
+
+  /** Re-read the scope snapshot into local state (keeps user edits when dirty). */
+  private absorbSnapshot(apiKeyConfigured?: boolean): void {
+    const section = this.section()
+    const configured = apiKeyConfigured ?? this.stateValue.apiKeyConfigured
+    const accounts: AccountFormEntry[] = Array.isArray(section.accounts)
+      ? (section.accounts as Record<string, unknown>[]).map((a, i) => ({
+          id: typeof a.apiKeyEnv === 'string' && a.apiKeyEnv ? a.apiKeyEnv : `account-${i + 2}`,
+          label: typeof a.label === 'string' ? a.label : `Account ${i + 2}`,
+          apiKey: typeof a.apiKey === 'string' ? a.apiKey : '',
+          apiKeyEnv: typeof a.apiKeyEnv === 'string' ? a.apiKeyEnv : '',
+          showKey: false,
+        }))
+      : []
+    this.stateValue = {
+      ...this.stateValue,
+      apiKeyEnv: typeof section.apiKeyEnv === 'string' && section.apiKeyEnv !== ''
+        ? section.apiKeyEnv
+        : DEFAULT_API_KEY_ENV,
+      apiKeyConfigured: configured,
+      apiBase: typeof section.apiBase === 'string' ? section.apiBase : '',
+      workingDir: typeof section.workingDir === 'string' ? section.workingDir : '',
+      requestTimeoutMs: section.requestTimeoutMs !== undefined && section.requestTimeoutMs !== null
+        ? String(section.requestTimeoutMs)
+        : '',
+      streamIdleTimeoutMs: section.streamIdleTimeoutMs !== undefined && section.streamIdleTimeoutMs !== null
+        ? String(section.streamIdleTimeoutMs)
+        : '',
+      filterModelsByPlan: section.filterModelsByPlan !== false,
+      modelsCachePath: typeof section.modelsCachePath === 'string' ? section.modelsCachePath : '',
+      lang: typeof section.lang === 'string' ? section.lang : 'zh',
+      accounts,
+      activeAccount: typeof section.activeAccount === 'string' ? section.activeAccount : '',
+      anyAccountConfigured: configured
+        || accounts.some((a) => a.apiKey.length > 0 || a.apiKeyEnv.length > 0),
+      status: this.scope.getSnapshot().status,
+      dirty: false,
+    }
     this.emit()
   }
 
@@ -191,48 +253,23 @@ export class CommandCodeSettingsController {
 
   private async load(): Promise<void> {
     try {
-      const settings = this.scope.get()
-      const apiKeyEnv = typeof settings.apiKeyEnv === 'string' ? settings.apiKeyEnv : 'COMMANDCODE_API_KEY'
-
-      let apiKey = ''
+      const section = this.section()
+      const apiKeyEnv = typeof section.apiKeyEnv === 'string' && section.apiKeyEnv !== ''
+        ? section.apiKeyEnv
+        : DEFAULT_API_KEY_ENV
+      let configured = false
       try {
-        const ref = { name: apiKeyEnv } as CredentialRef
-        const cred = await this.deps.credentials.get(ref)
-        apiKey = cred?.value ?? ''
+        const described = await this.deps.credentials.describe([apiKeyEnv])
+        configured = described?.[apiKeyEnv]?.configured === true
       } catch {
-        // credentials service may not be available
+        // credentials service may not be reachable; degrade to the section view
       }
-
-      const accounts: AccountFormEntry[] = Array.isArray(settings.accounts)
-        ? settings.accounts.map((a: Record<string, unknown>, i: number) => ({
-            id: typeof a.apiKeyEnv === 'string' && a.apiKeyEnv ? a.apiKeyEnv : `account-${i + 2}`,
-            label: typeof a.label === 'string' ? a.label : `Account ${i + 2}`,
-            apiKey: typeof a.apiKey === 'string' ? a.apiKey : '',
-            apiKeyEnv: typeof a.apiKeyEnv === 'string' ? a.apiKeyEnv : '',
-            showKey: false,
-          }))
-        : []
-
-      this.stateValue = {
-        ...DEFAULT_STATE,
-        apiKey,
-        apiKeyEnv,
-        apiBase: typeof settings.apiBase === 'string' ? settings.apiBase : '',
-        workingDir: typeof settings.workingDir === 'string' ? settings.workingDir : '',
-        requestTimeoutMs: settings.requestTimeoutMs !== undefined ? String(settings.requestTimeoutMs) : '',
-        streamIdleTimeoutMs: settings.streamIdleTimeoutMs !== undefined ? String(settings.streamIdleTimeoutMs) : '',
-        filterModelsByPlan: settings.filterModelsByPlan !== false,
-        modelsCachePath: typeof settings.modelsCachePath === 'string' ? settings.modelsCachePath : '',
-        lang: typeof settings.lang === 'string' ? settings.lang : 'zh',
-        accounts,
-        activeAccount: typeof settings.activeAccount === 'string' ? settings.activeAccount : '',
-        anyAccountConfigured: apiKey.length > 0 || accounts.some((a) => a.apiKey.length > 0 || a.apiKeyEnv.length > 0),
-        dirty: false,
-      }
+      this.absorbSnapshot(configured)
+      this.stateValue = { ...this.stateValue, status: this.scope.getSnapshot().status }
       this.emit()
     } catch (error) {
       this.stateValue = {
-        ...DEFAULT_STATE,
+        ...EMPTY_STATE,
         failed: true,
         errorMessage: error instanceof Error ? error.message : String(error),
       }
@@ -251,43 +288,49 @@ export class CommandCodeSettingsController {
     this.emit()
 
     try {
-      if (this.stateValue.apiKey) {
+      const apiKeyEnv = this.stateValue.apiKeyEnv || DEFAULT_API_KEY_ENV
+
+      // Replacement key only: stored secrets are write-only from the browser.
+      if (this.stateValue.apiKey.length > 0) {
         try {
-          const ref = { name: this.stateValue.apiKeyEnv || 'COMMANDCODE_API_KEY' } as CredentialRef
-          await this.deps.credentials.set(ref, this.stateValue.apiKey)
+          await this.deps.credentials.set(apiKeyEnv, this.stateValue.apiKey)
+          this.stateValue = { ...this.stateValue, apiKey: '', apiKeyConfigured: true }
         } catch {
           // credentials set may fail; settings still save
         }
       }
 
-      const patch: Record<string, unknown> = {
-        apiKeyEnv: this.stateValue.apiKeyEnv || 'COMMANDCODE_API_KEY',
-        apiBase: this.stateValue.apiBase || undefined,
-        workingDir: this.stateValue.workingDir || undefined,
-        requestTimeoutMs: this.stateValue.requestTimeoutMs ? Number(this.stateValue.requestTimeoutMs) : undefined,
-        streamIdleTimeoutMs: this.stateValue.streamIdleTimeoutMs ? Number(this.stateValue.streamIdleTimeoutMs) : undefined,
-        filterModelsByPlan: this.stateValue.filterModelsByPlan,
-        modelsCachePath: this.stateValue.modelsCachePath || undefined,
-        lang: this.stateValue.lang || undefined,
-        activeAccount: this.stateValue.activeAccount || undefined,
-        accounts: this.stateValue.accounts.map((a) => ({
-          label: a.label,
-          apiKeyEnv: a.apiKeyEnv || undefined,
-          apiKey: a.apiKey || undefined,
-        })),
-      }
-      for (const key of Object.keys(patch)) {
-        if (patch[key] === undefined) delete patch[key]
-      }
+      const fieldWrites: Array<{ field: string; value: unknown }> = [
+        { field: 'apiKeyEnv', value: apiKeyEnv },
+        { field: 'apiBase', value: this.stateValue.apiBase || undefined },
+        { field: 'workingDir', value: this.stateValue.workingDir || undefined },
+        { field: 'requestTimeoutMs', value: this.stateValue.requestTimeoutMs ? Number(this.stateValue.requestTimeoutMs) : undefined },
+        { field: 'streamIdleTimeoutMs', value: this.stateValue.streamIdleTimeoutMs ? Number(this.stateValue.streamIdleTimeoutMs) : undefined },
+        { field: 'filterModelsByPlan', value: this.stateValue.filterModelsByPlan },
+        { field: 'modelsCachePath', value: this.stateValue.modelsCachePath || undefined },
+        { field: 'lang', value: this.stateValue.lang || undefined },
+        { field: 'activeAccount', value: this.stateValue.activeAccount || undefined },
+        {
+          field: 'accounts',
+          value: this.stateValue.accounts.map((a) => ({
+            label: a.label,
+            apiKeyEnv: a.apiKeyEnv || undefined,
+            apiKey: a.apiKey || undefined,
+          })),
+        },
+      ]
 
-      await this.scope.set(patch)
+      for (const { field, value } of fieldWrites) {
+        if (value === undefined) await this.scope.unset(field)
+        else await this.scope.set(field, value)
+      }
 
       this.stateValue = {
         ...this.stateValue,
         saving: false,
         saved: true,
         dirty: false,
-        anyAccountConfigured: this.stateValue.apiKey.length > 0
+        anyAccountConfigured: this.stateValue.apiKeyConfigured
           || this.stateValue.accounts.some((a) => a.apiKey.length > 0 || a.apiKeyEnv.length > 0),
       }
       this.emit()
@@ -306,12 +349,9 @@ export class CommandCodeSettingsController {
     void this.load()
   }
 
-  async refreshCredentials(): Promise<void> {
-    await this.load()
-  }
-
   dispose(): void {
     this.disposed = true
+    this.unsubscribeScope()
     this.listeners.clear()
   }
 }

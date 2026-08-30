@@ -6,9 +6,9 @@ Thanks for your interest in improving dsh-commandcode! / 感谢你有兴趣改�
 
 ### Prerequisites / 前置要求
 
-- Node.js >= 22
-- A DSH-Desktop development checkout (for `@deepseek-ai/*` peer dependencies)
+- Node.js >= 20
 - Git
+- No DSH checkout required — see "Vendored @deepseek-ai packages" below / 无需本地 DSH 源码，见下文「内置的 @deepseek-ai 依赖」
 
 ### Install / 安装
 
@@ -18,11 +18,26 @@ git clone https://github.com/wjf1/dsh-commandcode.git
 cd dsh-commandcode
 
 # Install dependencies
-# Note: @deepseek-ai/* packages are private. Link them from a DSH checkout:
 npm install
 # or with pnpm:
 pnpm install
 ```
+
+### Vendored @deepseek-ai packages / 内置的 @deepseek-ai 依赖
+
+DeepSeek Harness `0.1.2-alpha.1` (bundled by DSH Desktop 0.7.x) has **not been
+published to npm** yet. So that `npm ci`, tests, and builds work for everyone
+without a local DSH checkout, the exact tarball closure the plugin compiles
+against is committed under `vendor/` and referenced with `file:` paths in
+`devDependencies`. The tarballs come from the same packages DSH Desktop itself
+ships. When upstream publishes `0.1.2` to npm, swap the `file:` entries back to
+semver ranges and delete `vendor/`.
+
+DeepSeek Harness `0.1.2-alpha.1`（DSH Desktop 0.7.x 内置版本）**尚未发布到
+npm**。为了让所有人无需本地 DSH 源码即可完成 `npm ci`、测试和构建，插件编译
+所需的确切 tarball 闭包已提交到 `vendor/`，并在 `devDependencies` 中以
+`file:` 路径引用。这些 tarball 与 DSH Desktop 实际打包的包完全一致。待上游
+发布 `0.1.2` 后，把 `file:` 条目换回语义化版本范围并删除 `vendor/` 即可。
 
 ### Build / 构建
 

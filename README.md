@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/wjf1/dsh-commandcode/actions/workflows/ci.yml/badge.svg)](https://github.com/wjf1/dsh-commandcode/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node](https://img.shields.io/badge/node-%3E%3D22-green.svg)](https://nodejs.org/)
+[![Node](https://img.shields.io/badge/node-%3E%3D20-green.svg)](https://nodejs.org/)
 
 [English](README.md) | [中文](README.zh-CN.md)
 
@@ -36,7 +36,7 @@
 - **Per-Account Usage Tabs** — Switch between accounts to view individual usage and plan status
 
 ### Version Adaptation
-- **DSH-Desktop 0.7.1 Compatible** — Follows the bundle loading mechanism (`dsh.profile.bundles`) and client injection规范
+- **DeepSeek Harness 0.1.2-alpha.1 Compatible** — Built for DSH Desktop 0.7.x: uses `@deepseek-ai/dsh-client-store` (replaces the deleted `dsh-client-runtime`), the reactive `SettingsScope` snapshot contract, the `credentials` Remote namespace, and the shared `/api` exact-Fetch-route registry for the usage/login backends
 - **One-Click Install** — Add to profile's `dsh.profile.bundles` and restart; no manual build steps required
 - **TypeScript Build** — Reproducible build via `tsdown` with ESM output and type declarations
 
@@ -45,8 +45,8 @@
 ## Installation
 
 ### Prerequisites
-- DSH-Desktop >= 0.7.1
-- Node.js >= 22 (for development/build only; the desktop app bundles its own runtime)
+- DSH-Desktop >= 0.7.0 (DeepSeek Harness 0.1.2-alpha.1)
+- Node.js >= 20 (for development/build only; the desktop app bundles its own runtime)
 - A Command Code account with API key or subscription
 
 ### Quick Install (Profile Bundle)

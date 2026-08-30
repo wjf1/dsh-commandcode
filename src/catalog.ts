@@ -233,6 +233,7 @@ export class ModelCatalog {
   private scheduleBackgroundRefresh(): void {
     if (this.refreshInFlight !== undefined) return
     this.refreshInFlight = this.refresh({ blocking: false })
+      .then(() => undefined)
       .catch(() => undefined)
       .finally(() => {
         this.refreshInFlight = undefined

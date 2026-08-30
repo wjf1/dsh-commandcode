@@ -9,3 +9,4 @@ dist/
 .credentials.yaml
 .vscode/
 .idea/
+.mimosa/

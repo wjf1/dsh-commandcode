@@ -1,4 +1,5 @@
-import { describe, it, assert } from 'node:test'
+import { describe, it } from 'node:test'
+import assert from 'node:assert/strict'
 import {
   CommandCodeAccountPool,
   buildSlots,
@@ -18,7 +19,8 @@ describe('buildSlots', () => {
 
   it('uses default env when apiKeyEnv is unset', () => {
     const slots = buildSlots({}, 'COMMANDCODE_API_KEY')
-    assert.equal(slots[0].ref?.name, 'COMMANDCODE_API_KEY')
+    // CredentialRef is a branded string in 0.1.2-alpha.1.
+    assert.equal(slots[0].ref, 'COMMANDCODE_API_KEY')
   })
 
   it('adds extra accounts with stable ids from env var', () => {
@@ -86,7 +88,8 @@ describe('CommandCodeAccountPool', () => {
   function makePool(slots: CommandCodeAccountSlot[], keys: Map<string, string>) {
     return new CommandCodeAccountPool({
       slots: () => slots,
-      resolveRef: async (ref) => keys.get(ref.name),
+      // CredentialRef is a branded string in 0.1.2-alpha.1.
+      resolveRef: async (ref) => keys.get(ref),
       authFileKey: async () => undefined,
       probeWindow: async () => undefined,
       preferredId: () => undefined,

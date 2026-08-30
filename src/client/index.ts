@@ -7,30 +7,42 @@
  * 2. The Models-page provider card (settings.models.provider-card slot)
  *    for the `commandcode` provider.
  *
- * Enhancement over the reference: unified CSS design system, real-time form
- * validation, per-account usage tabs, and DSH-Desktop 0.7.1 design token
- * alignment.
+ * 0.1.2-alpha note: `@deepseek-ai/dsh-client-runtime` was deleted upstream —
+ * snapshot stores come from `@deepseek-ai/dsh-client-store` now, credentials
+ * read/write through the `credentials` Remote namespace, and the usage/login
+ * backends are Host Fetch routes under `/api/commandcode/*` reached with
+ * plain same-origin `fetch` (the shared `/api` channel applies its own
+ * trust and browser-authentication policy).
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 
-import type {} from '@deepseek-ai/dsh-api-remotes/client'
+// Type-only service merges: ctx.slots / ctx.locale / ctx.remote / ctx.settingsScope.
+import type {} from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import type {} from '@deepseek-ai/dsh-client-ui-settings-models/client'
+import type {} from '@deepseek-ai/dsh-api-gateway/client'
+import type {} from '@deepseek-ai/dsh-api-settings-controller/remote'
 
-import { installFriendlyImageError, type ConnectionLike } from './sessions.ts'
-import { CommandCodeSettingsController, COMMANDCODE_NS, type SettingsPageState } from './settings.ts'
-import { CommandCodeUsageController, type UsagePageState, type UsageRemote } from './usage.ts'
+import { isImageSessionRejection } from './sessions.ts'
+import { CommandCodeSettingsController, COMMANDCODE_NS, type CredentialsFace, type SettingsPageState } from './settings.ts'
+import { CommandCodeUsageController, type UsagePageState } from './usage.ts'
 import { CommandCodeLoginController, type LoginPageState, type LoginRemote } from './login.ts'
-import { USAGE_REMOTE_CONTRIBUTION } from '../usage-wire.ts'
-import { LOGIN_REMOTE_CONTRIBUTION } from '../login-wire.ts'
-import type { TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
+import { USAGE_REPORT_PATH, parseAccountsReport } from '../usage-wire.ts'
+import {
+  LOGIN_BEGIN_PATH,
+  LOGIN_STATUS_PATH,
+  LOGIN_CANCEL_PATH,
+  parseLoginStatus,
+} from '../login-wire.ts'
 import { CommandCodeSettingsPage } from './section.tsx'
 import { CommandCodeProviderCard } from './card.tsx'
-import { zh, en } from './locales.ts'
+import { zh, en, type ClientLocale } from './locales.ts'
 
-export { isImageSessionRejection, withFriendlyImageError } from './sessions.ts'
+export { isImageSessionRejection } from './sessions.ts'
 
 /** CSS for the settings page and provider card, injected once. */
 const PAGE_CSS = `
@@ -134,62 +146,64 @@ function injectPageCss(): void {
   document.head.appendChild(tag)
 }
 
+const FETCH_TIMEOUT_MS = 15_000
+
+async function fetchJson(path: string): Promise<unknown> {
+  const response = await fetch(path, {
+    headers: { accept: 'application/json' },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  })
+  if (!response.ok) {
+    throw new Error(`Host returned HTTP ${response.status} for ${path}`)
+  }
+  return response.json() as Promise<unknown>
+}
+
 export function apply(ctx: Context): void {
   injectPageCss()
-
-  const connection = ctx.get('connection') as ConnectionLike | undefined
-  if (connection !== undefined) {
-    installFriendlyImageError(connection, () => ctx.locale.getLocale().active)
-  }
 
   ctx.effect(
     () => ctx.locale.register('settings.commandcode', { zh, en }),
     'dsh-commandcode: page copy',
   )
 
-  const api = ctx.get('connection').api
-  const hostDescription = ctx.get('connection').hostDescription
+  // The settings scope is a reactive snapshot handle over the Host section.
   const scope = ctx.settingsScope.bind<Record<string, unknown>>({ namespace: COMMANDCODE_NS })
-  const controller = new CommandCodeSettingsController(scope, { credentials: api.credentials, hostDescription })
+  const credentials: CredentialsFace = {
+    describe: async (refs) => {
+      const result = await ctx.remote.credentials.describe(refs)
+      return result.ok ? result.value : undefined
+    },
+    set: async (ref, value) => {
+      const result = await ctx.remote.credentials.set(ref, value)
+      if (!result.ok) {
+        throw new Error(result.error.message)
+      }
+    },
+  }
+  const controller = new CommandCodeSettingsController(scope, { credentials })
   ctx.effect(() => () => controller.dispose(), 'dsh-commandcode: settings controller')
   const store = createSnapshotStore<SettingsPageState>(controller.state())
   controller.subscribe(() => store.set(controller.state()))
 
-  let usageNamespace: (typeof ctx.remote)['commandcode'] | undefined
-  let usageMountError: string | undefined
-
-  const contribution: TypertRemoteContribution = {
-    package: USAGE_REMOTE_CONTRIBUTION.package,
-    descriptors: [...USAGE_REMOTE_CONTRIBUTION.descriptors, ...LOGIN_REMOTE_CONTRIBUTION.descriptors],
-  }
-
-  ctx.effect(() => {
-    let unmount: (() => Promise<void>) | undefined
-    void ctx.remote.$mount(contribution).then((dispose) => {
-      unmount = dispose
-      ctx.inject(['remote.commandcode'], (namespaceCtx) => {
-        usageNamespace = namespaceCtx.remote.commandcode
-        namespaceCtx.effect(() => () => { usageNamespace = undefined }, 'dsh-commandcode: usage namespace')
-      })
-    }, (error: unknown) => {
-      usageMountError = error instanceof Error ? error.message : String(error)
-    })
-    return () => { void unmount?.() }
-  }, 'dsh-commandcode: usage remote')
-
-  const usageRemote: UsageRemote = {
-    report: async () => {
-      const namespace = usageNamespace
-      if (namespace === undefined) {
-        return { ok: false, error: { message: usageMountError ?? 'Usage service not available' } }
-      }
+  // Usage report and login flow ride Host Fetch routes on the shared /api channel.
+  const usageRemote = {
+    report: async (): Promise<
+      { ok: true; data: ReturnType<typeof parseAccountsReport> } | { ok: false; error: { message: string } }
+    > => {
       try {
-        const data = await namespace.report()
+        const data = parseAccountsReport(await fetchJson(USAGE_REPORT_PATH))
         return { ok: true, data }
       } catch (error) {
         return { ok: false, error: { message: error instanceof Error ? error.message : String(error) } }
       }
     },
+  }
+
+  const loginRemote: LoginRemote = {
+    begin: () => fetchLoginStatus(LOGIN_BEGIN_PATH),
+    status: () => fetchLoginStatus(LOGIN_STATUS_PATH),
+    cancel: () => fetchLoginStatus(LOGIN_CANCEL_PATH),
   }
 
   const usageController = new CommandCodeUsageController(usageRemote)
@@ -197,43 +211,12 @@ export function apply(ctx: Context): void {
   const usageStore = createSnapshotStore<UsagePageState>(usageController.state())
   usageController.subscribe(() => usageStore.set(usageController.state()))
 
-  const loginRemote: LoginRemote = {
-    begin: async () => {
-      const namespace = usageNamespace
-      if (namespace === undefined) return { ok: false, error: { message: 'Login service not available' } }
-      try {
-        const data = await namespace['login/begin']()
-        return { ok: true, data }
-      } catch (error) {
-        return { ok: false, error: { message: error instanceof Error ? error.message : String(error) } }
-      }
-    },
-    status: async () => {
-      const namespace = usageNamespace
-      if (namespace === undefined) return { ok: false, error: { message: 'Login service not available' } }
-      try {
-        const data = await namespace['login/status']()
-        return { ok: true, data }
-      } catch (error) {
-        return { ok: false, error: { message: error instanceof Error ? error.message : String(error) } }
-      }
-    },
-    cancel: async () => {
-      const namespace = usageNamespace
-      if (namespace === undefined) return { ok: false, error: { message: 'Login service not available' } }
-      try {
-        const data = await namespace['login/cancel']()
-        return { ok: true, data }
-      } catch (error) {
-        return { ok: false, error: { message: error instanceof Error ? error.message : String(error) } }
-      }
-    },
-  }
-
   const loginController = new CommandCodeLoginController(loginRemote)
   ctx.effect(() => () => loginController.dispose(), 'dsh-commandcode: login controller')
   const loginStore = createSnapshotStore<LoginPageState>(loginController.state())
   loginController.subscribe(() => loginStore.set(loginController.state()))
+
+  const t = () => ctx.locale.bind('settings.commandcode')
 
   const injected = () => ({
     hooks: { commandCodeSettings: store, commandCodeUsage: usageStore, commandCodeLogin: loginStore },
@@ -252,22 +235,21 @@ export function apply(ctx: Context): void {
     editAccountLabel: (id: string, text: string) => controller.editAccountLabel(id, text),
     editAccountKey: (id: string, text: string) => controller.editAccountKey(id, text),
     toggleKeyClear: (id: string) => controller.toggleKeyClear(id),
-    t: (key: string) => ctx.locale.bind('settings.commandcode')(key),
+    setFilterModels: (value: boolean) => controller.setFilterModels(value),
+    t: (key: keyof ClientLocale) => t()(key),
   })
 
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section',
     id: 'commandcode',
     order: 12,
-    label: () => ctx.locale.bind('settings.commandcode')('nav'),
-    locale: 'settings.commandcode',
+    label: () => t()('nav'),
     inject: injected,
   }, CommandCodeSettingsPage))
 
   ctx.slots.inject('settings.models.provider-card', () => ctx.slots.register({
     name: 'settings.models.provider-card',
     key: 'llm-commandcode',
-    locale: 'settings.commandcode',
     inject: () => ({
       hooks: { commandCodeSettings: store, commandCodeLogin: loginStore },
       edit: (field: string, text: string) => controller.edit(field, text),
@@ -277,9 +259,20 @@ export function apply(ctx: Context): void {
       }),
       beginLogin: () => void loginController.begin(),
       cancelLogin: () => void loginController.cancel(),
-      t: (key: string) => ctx.locale.bind('settings.commandcode')(key),
+      t: (key: keyof ClientLocale) => t()(key),
     }),
   }, CommandCodeProviderCard))
+}
+
+async function fetchLoginStatus(
+  path: string,
+): Promise<{ ok: true; data: LoginPageState } | { ok: false; error: { message: string } }> {
+  try {
+    const data = parseLoginStatus(await fetchJson(path))
+    return { ok: true, data }
+  } catch (error) {
+    return { ok: false, error: { message: error instanceof Error ? error.message : String(error) } }
+  }
 }
 
 export const inject: readonly string[] = [
@@ -287,5 +280,6 @@ export const inject: readonly string[] = [
   'locale',
   'connection',
   'remote',
+  'remote.credentials',
   'settingsScope',
 ]

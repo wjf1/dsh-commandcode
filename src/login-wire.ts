@@ -1,18 +1,20 @@
 /**
  * Login wire protocol types — shared between Host and Client.
  *
- * The Host exposes three Typert Gateway endpoints under `commandcode/login`:
- *   - begin: start the OAuth flow (returns the authorization URL)
- *   - status: poll the flow status (pending / success / failed)
- *   - cancel: abort an in-progress flow
+ * The Host exposes three GET Fetch routes on the shared `/api` channel:
+ *   - /api/commandcode/login/begin: start the OAuth flow (returns the
+ *     authorization URL)
+ *   - /api/commandcode/login/status: poll the flow status
+ *   - /api/commandcode/login/cancel: abort an in-progress flow
+ *
+ * Payloads travel as plain JSON; the Client validates them defensively
+ * through `parseLoginStatus`.
  */
 
-import z from '@deepseek-ai/schemastery'
-
-/** Endpoint paths (mounted under the `commandcode` Typert namespace). */
-export const LOGIN_BEGIN_ENDPOINT = 'commandcode/login/begin'
-export const LOGIN_STATUS_ENDPOINT = 'commandcode/login/status'
-export const LOGIN_CANCEL_ENDPOINT = 'commandcode/login/cancel'
+/** Fetch route paths (mounted on the shared `/api` channel). */
+export const LOGIN_BEGIN_PATH = '/api/commandcode/login/begin'
+export const LOGIN_STATUS_PATH = '/api/commandcode/login/status'
+export const LOGIN_CANCEL_PATH = '/api/commandcode/login/cancel'
 
 /** Why a login flow failed. */
 export type CommandCodeLoginFailureReason =
@@ -39,28 +41,6 @@ export interface CommandCodeLoginStatus {
   completedAt?: number
 }
 
-/** Schema for the status endpoint response (validated by Typert). */
-export const loginStatusSchema = z.object({
-  phase: z.union([
-    z.literal('idle'),
-    z.literal('pending'),
-    z.literal('success'),
-    z.literal('failed'),
-  ]),
-  authUrl: z.string().optional(),
-  failure: z.union([
-    z.literal('timeout'),
-    z.literal('cancelled'),
-    z.literal('callback-error'),
-    z.literal('invalid-key'),
-    z.literal('store-error'),
-    z.literal('network'),
-  ]).optional(),
-  message: z.string().optional(),
-  startedAt: z.number().optional(),
-  completedAt: z.number().optional(),
-})
-
 /** Parse a raw status response (defensive: returns idle on bad input). */
 export function parseLoginStatus(value: unknown): CommandCodeLoginStatus {
   if (typeof value !== 'object' || value === null) {
@@ -80,13 +60,3 @@ export function parseLoginStatus(value: unknown): CommandCodeLoginStatus {
     completedAt: typeof v.completedAt === 'number' ? v.completedAt : undefined,
   }
 }
-
-/** Typert Remote contribution descriptor for the login endpoints. */
-export const LOGIN_REMOTE_CONTRIBUTION = {
-  package: 'dsh-commandcode',
-  descriptors: [
-    { name: LOGIN_BEGIN_ENDPOINT, input: z.object({}), output: loginStatusSchema },
-    { name: LOGIN_STATUS_ENDPOINT, input: z.object({}), output: loginStatusSchema },
-    { name: LOGIN_CANCEL_ENDPOINT, input: z.object({}), output: loginStatusSchema },
-  ],
-} as const

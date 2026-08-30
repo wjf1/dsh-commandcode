@@ -38,4 +38,4 @@ jobs:
         run: |
           test -f lib/index.js
           test -f lib/index.d.ts
-          test -f lib/client/index.js
+          test -f lib/client.js

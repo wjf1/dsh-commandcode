@@ -7,13 +7,11 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { CommandCodeAdapter, CommandCodeUsageReport } from './adapter.ts'
 import type { CommandCodeAccountsReport } from './usage-wire.ts'
-import type { CommandLocale, LocaleId } from './command-locales.ts'
+import { zh, en, type CommandLocale, type LocaleId } from './command-locales.ts'
 
 /** Dependencies for the command. */
 export interface CommandCodeCommandDeps {
-  adapter: CommandCodeAdapter
   reports: () => Promise<CommandCodeAccountsReport>
   getLocale: () => LocaleId
 }
@@ -48,9 +46,6 @@ export function applyCommands(ctx: Context, deps: CommandCodeCommandDeps): void 
 
 /** Get locale strings by id. */
 function getLocaleStrings(locale: LocaleId): CommandLocale {
-  // Dynamic import to avoid circular dependency
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { zh, en } = require('./command-locales.ts') as { zh: CommandLocale; en: CommandLocale }
   return locale === 'en' ? en : zh
 }
 
@@ -78,7 +73,7 @@ function renderUsageReport(report: CommandCodeAccountsReport, t: CommandLocale):
     lines.push(`--- ${account.label} ${badge} ${markBadge} ---`)
 
     if (!account.configured) {
-      lines.push(`  ${t.noApiKey}`)
+      lines.push(`  ${t.noKeyFound}`)
       lines.push('')
       continue
     }

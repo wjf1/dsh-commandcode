@@ -1,47 +1,12 @@
 /**
  * Usage controller — manages the per-account usage display state by
- * calling the Host's `commandcode/report` Typert Gateway endpoint.
+ * calling the Host's `GET /api/commandcode/report` Fetch route.
  */
 
-/** One account's usage data (structural match for the Host report). */
-export interface UsageAccountEntry {
-  id: string
-  label: string
-  configured: boolean
-  active: boolean
-  mark: '' | 'rate-limit' | 'invalid-credential'
-  cooldownUntil: number
-  report: {
-    account?: { id: string; name: string; userName: string }
-    usage?: {
-      totalCount: number
-      totalCost: number
-      successRate: number
-      completedCount: number
-      failedCount: number
-      totalTokensIn: number
-      totalTokensOut: number
-      totalCredits: number
-      periodBasis: string
-    }
-    credits?: {
-      monthlyCredits: number
-      purchasedCredits: number
-      freeCredits: number
-      fiveHour: { used: number; cap: number; exceeded: boolean; resetAt: number }
-      weekly: { used: number; cap: number; exceeded: boolean; resetAt: number }
-    }
-    plan?: {
-      planId: string
-      name: string
-      status: string
-      monthlyCredits: number | null
-      currentPeriodEnd: number
-    }
-    failures: string[]
-    blocked?: 'invalid-key' | 'service-unavailable' | 'network'
-  }
-}
+import type { CommandCodeAccountUsage, CommandCodeAccountsReport } from '../usage-wire.ts'
+
+/** One account's usage data (Host report entry). */
+export type UsageAccountEntry = CommandCodeAccountUsage
 
 /** Usage page state. */
 export interface UsagePageState {
@@ -54,7 +19,7 @@ export interface UsagePageState {
 
 /** Usage remote interface. */
 export interface UsageRemote {
-  report: () => Promise<{ ok: boolean; data?: { accounts: UsageAccountEntry[] }; error?: { message: string } }>
+  report: () => Promise<{ ok: boolean; data?: CommandCodeAccountsReport; error?: { message: string } }>
 }
 
 /**
