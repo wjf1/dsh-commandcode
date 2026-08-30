@@ -67,8 +67,9 @@ export const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 300_000
 export const DEFAULT_MAX_OUTPUT_TOKENS = 32_768
 /** Hard cap on generate max_tokens. */
 export const DEFAULT_GENERATE_MAX_TOKENS = 65_536
-/** CLI version reported in the config block. */
-export const COMMAND_CODE_CLI_VERSION = '1.37.0'
+/** CLI version reported to the API (the endpoint rejects clients below its
+ *  `minVersion` when the `x-command-code-version` header is missing). */
+export const COMMAND_CODE_CLI_VERSION = '1.38.2'
 /** Default models cache path. */
 export const DEFAULT_MODELS_CACHE_PATH = join(homedir(), '.commandcode', 'models-cache.json')
 
@@ -567,7 +568,9 @@ export class CommandCodeAdapter<C extends CommandCodeConnectionOptions = Command
       })
       if (!response.ok) return undefined
       const parsed = await response.json() as Record<string, unknown>
-      const fiveHour = isRecord(parsed.fiveHour) ? parsed.fiveHour : undefined
+      // The endpoint nests the window under `windowLimits`; older flat shapes stay supported.
+      const windowLimits = isRecord(parsed.windowLimits) ? parsed.windowLimits : parsed
+      const fiveHour = isRecord(windowLimits.fiveHour) ? windowLimits.fiveHour : undefined
       if (fiveHour === undefined) return undefined
       return {
         exceeded: fiveHour.exceeded === true,
@@ -585,6 +588,7 @@ export class CommandCodeAdapter<C extends CommandCodeConnectionOptions = Command
     const connection = this.deps.options()
     const report: CommandCodeUsageReport = { failures: [] }
     const failedStatuses: (number | undefined)[] = []
+    let networkFailures = 0
 
     const endpoints = [
       { path: '/alpha/whoami', key: 'account' as const },
@@ -607,10 +611,12 @@ export class CommandCodeAdapter<C extends CommandCodeConnectionOptions = Command
         const body = await response.json() as Record<string, unknown>
         failedStatuses.push(undefined)
         if (key === 'account') {
+          // Real shape: { success, user: { id, name, userName, email } }.
+          const user = isRecord(body.user) ? body.user : body
           report.account = {
-            id: stringValue(body.id) ?? '',
-            name: stringValue(body.name) ?? '',
-            userName: stringValue(body.userName) ?? '',
+            id: stringValue(user.id) ?? '',
+            name: stringValue(user.name) ?? '',
+            userName: stringValue(user.userName) ?? '',
           }
         } else if (key === 'usage') {
           report.usage = {
@@ -625,12 +631,15 @@ export class CommandCodeAdapter<C extends CommandCodeConnectionOptions = Command
             periodBasis: stringValue(body.periodBasis) ?? '',
           }
         } else if (key === 'credits') {
-          const fh = isRecord(body.fiveHour) ? body.fiveHour : {}
-          const wk = isRecord(body.weekly) ? body.weekly : {}
+          // Real shape: { credits: { monthlyCredits, ... }, windowLimits: { fiveHour, weekly } }.
+          const creditFields = isRecord(body.credits) ? body.credits : body
+          const windowLimits = isRecord(body.windowLimits) ? body.windowLimits : body
+          const fh = isRecord(windowLimits.fiveHour) ? windowLimits.fiveHour : isRecord(body.fiveHour) ? body.fiveHour : {}
+          const wk = isRecord(windowLimits.weekly) ? windowLimits.weekly : isRecord(body.weekly) ? body.weekly : {}
           report.credits = {
-            monthlyCredits: numberValue(body.monthlyCredits) ?? 0,
-            purchasedCredits: numberValue(body.purchasedCredits) ?? 0,
-            freeCredits: numberValue(body.freeCredits) ?? 0,
+            monthlyCredits: numberValue(creditFields.monthlyCredits) ?? 0,
+            purchasedCredits: numberValue(creditFields.purchasedCredits) ?? 0,
+            freeCredits: numberValue(creditFields.freeCredits) ?? 0,
             fiveHour: {
               used: numberValue(fh.used) ?? 0,
               cap: numberValue(fh.cap) ?? 0,
@@ -645,29 +654,33 @@ export class CommandCodeAdapter<C extends CommandCodeConnectionOptions = Command
             },
           }
         } else if (key === 'plan') {
-          const planId = stringValue(body.planId) ?? stringValue(body.id) ?? ''
+          // Real shape: { success, data: { planId, status, currentPeriodEnd, ... } }.
+          const planSource = isRecord(body.data) ? body.data : body
+          const planId = stringValue(planSource.planId) ?? stringValue(planSource.id) ?? ''
           const known = KNOWN_SUBSCRIPTION_PLANS[planId]
           report.plan = {
             planId,
-            name: known?.name ?? stringValue(body.name) ?? planId,
-            status: stringValue(body.status) ?? '',
+            name: known?.name ?? stringValue(planSource.name) ?? planId,
+            status: stringValue(planSource.status) ?? '',
             monthlyCredits: known?.monthlyCredits ?? null,
-            currentPeriodEnd: numberValue(body.currentPeriodEnd) ?? 0,
+            currentPeriodEnd: numberValue(planSource.currentPeriodEnd) ?? 0,
           }
         }
       } catch (error) {
         failedStatuses.push(undefined)
+        networkFailures += 1
         report.failures.push(`${path}: ${error instanceof Error ? error.message : String(error)}`)
       }
     }))
 
-    // Classify total failure
+    // Classify total failure: `blocked` stays undefined when at least one
+    // endpoint succeeded, so a healthy report never shows a blocked banner.
     const codes = failedStatuses.filter((s): s is number => s !== undefined)
     if (codes.length === endpoints.length && codes.every((c) => c === 401)) {
       report.blocked = 'invalid-key'
     } else if (codes.length === endpoints.length && codes.every((c) => c >= 500)) {
       report.blocked = 'service-unavailable'
-    } else if (codes.length === 0) {
+    } else if (networkFailures === endpoints.length) {
       report.blocked = 'network'
     }
 
@@ -829,6 +842,7 @@ export class CommandCodeAdapter<C extends CommandCodeConnectionOptions = Command
             'content-type': 'application/json',
             authorization: `Bearer ${apiKey}`,
             accept: 'text/event-stream',
+            'x-command-code-version': COMMAND_CODE_CLI_VERSION,
             ...attributionHeaders(),
           },
           body: JSON.stringify(body),

@@ -107,9 +107,11 @@ export async function validateCommandApiKey(
       return { valid: false, error: `Validation endpoint returned ${response.status}` }
     }
     const body = await response.json() as Record<string, unknown>
+    // Real shape: { success, user: { id, name, userName, email } }.
+    const user = typeof body.user === 'object' && body.user !== null ? body.user as Record<string, unknown> : body
     return {
       valid: true,
-      account: typeof body.userName === 'string' ? body.userName : typeof body.name === 'string' ? body.name : undefined,
+      account: typeof user.userName === 'string' ? user.userName : typeof user.name === 'string' ? user.name : undefined,
     }
   } catch (error) {
     return {
