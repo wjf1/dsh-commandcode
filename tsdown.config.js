@@ -9,6 +9,7 @@ export default {
   dts: true,
   sourcemap: true,
   clean: true,
+  outDir: 'lib',
   target: 'es2022',
   platform: 'neutral',
   external: [
