@@ -5,6 +5,12 @@ All notable changes to **dsh-commandcode** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-08-31
+
+### Fixed
+
+- **DSH Desktop 插件市场安装失败**（"build scripts are blocked by pnpm by default"）：pnpm v10 起默认拦截依赖包的生命周期脚本，本插件此前依赖 `prepare` 脚本在安装现场执行 tsdown 构建，被拦截后市场直接判定无法安装。现在将构建产物 `lib/` 直接提交进仓库并移除 `prepare` 脚本，安装变为零脚本的纯文件拷贝，不再触发 pnpm 的构建脚本拦截，也无需手动点击「放行构建脚本并重试」。`npm run build` 保留，供本地开发与 CI 使用
+
 ## [1.1.1] - 2026-08-30
 
 ### Changed
