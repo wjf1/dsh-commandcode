@@ -10,6 +10,20 @@
 
 ---
 
+## 截图
+
+以下截图来自 DSH Desktop 0.7.1 内的真机运行。安装插件后，你在 **设置 → Command Code** 与 **Models** 页面看到的就是同样的卡片。
+
+| 视图 | 内容 | 资源文件 |
+|------|------|----------|
+| 用量与套餐面板 | 账户 chip、套餐徽标、请求/成功率/花费/Token 入出分解、月额度·已购·赠送、5 小时与每周窗口进度条 | `assets/panel-usage.png` |
+| Models 页面提供商卡片 | Command Code 提供商分组、API Key 输入、快捷登录、目录刷新 | `assets/card-models.png` |
+| 多账户设置 | 账户列表、各槽位的 API Key 环境变量、当前活跃账户切换 | `assets/settings-accounts.png` |
+
+> `assets/` 目录是这些图片的存放位置，拍摄与更新方法见 [`HANDOFF.md`](HANDOFF.md)；`screenshots.json` 列出了插件市场会自动抓取的资源清单（当前为空，尚未发布任何截图）。
+
+---
+
 ## 功能特性
 
 ### 核心能力（功能对齐）
@@ -224,13 +238,21 @@ dsh-commandcode/
 │       ├── update.ts       # 更新检查
 │       └── version.ts      # 版本常量
 ├── tests/                  # Node 测试运行器测试套件
-├── assets/                 # 图标和截图
+├── assets/                 # 图标和截图（见「截图」章节）
+├── lib/                    # 预构建 ESM 产物，刻意提交进仓库，原因见下
+├── vendor/                 # 落盘的 0.1.2-alpha.1 依赖闭包（file: 形式的 devDependencies）
 ├── cordis.patch.yml        # Bundle 层定义
 ├── package.json
 ├── tsconfig.json
-├── tsdown.config.ts
+├── tsdown.config.ts / tsdown.config.js
+├── screenshots.json        # 插件市场抓取的资源清单
+├── HANDOFF.md              # 跨会话接力文档
 └── README.md / README.zh-CN.md / CHANGELOG.md / LICENSE
 ```
+
+### 为什么把 `lib/` 提交进仓库
+
+pnpm v10 起默认拦截依赖包的生命周期脚本。依赖 `prepare` 脚本在安装现场自建的插件会因 "build scripts are blocked by pnpm by default" 被市场判定无法安装。本仓库直接提交构建产物 `lib/`，安装退化为零脚本的纯文件拷贝。`npm run build` 仍然保留，供本地开发与 CI 使用；**改动 `src/` 后必须重新构建并一并提交 `lib/`**。
 
 ### 构建命令
 

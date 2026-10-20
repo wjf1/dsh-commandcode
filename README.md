@@ -10,6 +10,20 @@
 
 ---
 
+## Screenshots
+
+The screenshots below come from real runs inside DSH Desktop 0.7.1. After installing the plugin you see the same cards under **Settings → Command Code** and on the **Models** page.
+
+| View | What it shows | Asset |
+|------|---------------|-------|
+| Usage & plan panel | Account chip, plan badge, request / success-rate / cost / token in-out breakdown, monthly · purchased · gifted quotas, 5-hour and weekly window progress bars | `assets/panel-usage.png` |
+| Models page provider card | Command Code provider group, API key input, quick login, catalog refresh | `assets/card-models.png` |
+| Multi-account settings | Account list, per-slot API key environment variable, active account switch | `assets/settings-accounts.png` |
+
+> The `assets/` directory is where these images live; how to capture and refresh them is documented in [`HANDOFF.md`](HANDOFF.md). `screenshots.json` lists the assets the plugin marketplace picks up automatically (currently empty — no screenshot is published yet).
+
+---
+
 ## Features
 
 ### Core Capability (Feature Parity)
@@ -224,13 +238,21 @@ dsh-commandcode/
 │       ├── update.ts       # Update check
 │       └── version.ts      # Version constants
 ├── tests/                  # Node test runner test suite
-├── assets/                 # Icons and screenshots
+├── assets/                 # Icons and screenshots (see the Screenshots section)
+├── lib/                    # Prebuilt ESM output committed on purpose — see below
+├── vendor/                 # Vendored 0.1.2-alpha.1 package closure (file: devDependencies)
 ├── cordis.patch.yml        # Bundle layer definition
 ├── package.json
 ├── tsconfig.json
-├── tsdown.config.ts
+├── tsdown.config.ts / tsdown.config.js
+├── screenshots.json        # Assets the marketplace picks up
+├── HANDOFF.md              # Cross-session handoff notes
 └── README.md / README.zh-CN.md / CHANGELOG.md / LICENSE
 ```
+
+### Why `lib/` Is Committed
+
+pnpm v10+ blocks lifecycle scripts of dependencies by default. A plugin that builds itself in a `prepare` script therefore fails to install from the marketplace ("build scripts are blocked by pnpm by default"). This repository commits the built `lib/` so that installation is a plain file copy with zero scripts. `npm run build` still exists for local development and CI; remember to run it and commit `lib/` whenever `src/` changes.
 
 ### Build Commands
 

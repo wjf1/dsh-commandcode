@@ -5,6 +5,17 @@ All notable changes to **dsh-commandcode** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `HANDOFF.md`：补齐四文档门禁要求的跨会话接力文档（项目概况与当前状态 / 技术栈与运行基线 / 核心架构与文件拓扑 / 最近一轮变更 / 待办与下一步 / 关键避坑与运行约束）
+- `README.md` 与 `README.zh-CN.md` 新增「截图 / Screenshots」章节与配图说明，并补上 `lib/` 为何刻意提交进仓库的说明
+
+### Fixed
+
+- `README.md` 与 `README.zh-CN.md` 的「项目结构」树补全 `lib/`、`vendor/`、`screenshots.json`、`HANDOFF.md` 等实际存在的条目
+
 ## [1.1.2] - 2026-08-31
 
 ### Fixed
