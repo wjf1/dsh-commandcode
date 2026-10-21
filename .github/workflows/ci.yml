@@ -39,3 +39,15 @@ jobs:
           test -f lib/index.js
           test -f lib/index.d.ts
           test -f lib/client.js
+
+      # lib/ is committed on purpose (users install without a build step), so a
+      # src/ change that is not followed by a rebuild ships stale code. Checking
+      # for the files only proves they exist, not that they match.
+      - name: Verify lib/ matches src/
+        run: |
+          if [ -n "$(git status --porcelain lib/)" ]; then
+            git diff --stat -- lib/ || true
+            echo "::error::lib/ 与 src/ 不同步：请在本地运行 npm run build 并提交 lib/ 的改动"
+            exit 1
+          fi
+          echo "lib/ 与 src/ 一致"

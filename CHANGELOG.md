@@ -11,10 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `HANDOFF.md`：补齐四文档门禁要求的跨会话接力文档（项目概况与当前状态 / 技术栈与运行基线 / 核心架构与文件拓扑 / 最近一轮变更 / 待办与下一步 / 关键避坑与运行约束）
 - `README.md` 与 `README.zh-CN.md` 新增「截图 / Screenshots」章节与配图说明，并补上 `lib/` 为何刻意提交进仓库的说明
+- `tests/login.test.ts`：登录回调 CORS 判定的回归测试（顶级导航 / 回环来源 / 白名单来源 / 任意来源拒绝）
+- `tests/retry.test.ts`：熔断器状态机回归测试（达阈值熔断 / 半开探测失败重新熔断 / 探测成功恢复）
+- CI 增加「`lib/` 是否与 `src/` 同步」的校验：`lib/` 是提交进仓库的产物，只检查文件存在无法发现忘记重建
 
 ### Fixed
 
+- **登录回调的 CORS 通配符**（`src/login.ts`）：回环回调服务器此前对任意来源回 `Access-Control-Allow-Origin: *`，任何网页都能跨域读取回调响应，并可借简单 POST 把攻击者自己的 API key 注入进去。现在无 `Origin`（浏览器顶级导航）不下发任何 CORS 头；有 `Origin` 时必须是绑定的回环端口或白名单来源，其余一律 403 且不回 CORS 头。
+- **超限请求的 413 发不出去**（`src/login.ts`）：请求体超限时先 `req.destroy()` 再回 413，客户端只会收到 `ECONNRESET`。现在先回响应、再靠 drain 收尾。
+- **流式响应重复 finish**（`src/adapter.ts`）：循环外的兜底 `finish` 无条件执行，上游已经发过 `finish` 时会再补一个，按 `finish` 计费/收尾的下游被触发两次。现在用 `finished` 标记守卫。
+- **熔断器半开后永久失效**（`src/retry.ts`）：`recordFailure` 用 `failures === threshold` 判断，半开探测失败后 `failures` 已超过阈值，`openedAt` 不再刷新，熔断器从此永久放行。改为 `>=`。
 - `README.md` 与 `README.zh-CN.md` 的「项目结构」树补全 `lib/`、`vendor/`、`screenshots.json`、`HANDOFF.md` 等实际存在的条目
+
+### Removed
+
+- `tsdown.config.ts`：与 `tsdown.config.js` 内容重复且未被任何构建脚本引用（构建显式 `--config tsdown.config.js`），保留两份会让读者无法判断哪份生效
 
 ## [1.1.2] - 2026-08-31
 

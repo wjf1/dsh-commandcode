@@ -476,10 +476,6 @@ declare function studioBaseForApiBase(apiBase: string): string;
  * Returns the account info when valid.
  */
 declare function validateCommandApiKey(apiKey: string, apiBase: string, fetchImpl?: typeof fetch): Promise<ApiKeyValidation>;
-/**
- * Login flow controller. One instance per plugin lifecycle.
- * Only one flow can be active at a time.
- */
 declare class CommandCodeLoginFlow {
   private readonly deps;
   private server;

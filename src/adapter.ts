@@ -1012,6 +1012,10 @@ export class CommandCodeAdapter<C extends CommandCodeConnectionOptions = Command
       return chunks
     }
 
+    // Track whether the upstream already emitted a finish chunk. The
+    // fallback finish below must only fire when it did not — otherwise
+    // downstream consumers that settle/bill/close on `finish` run twice.
+    let finished = false
     try {
       while (true) {
         const { done, value } = await reader.read()
@@ -1024,6 +1028,7 @@ export class CommandCodeAdapter<C extends CommandCodeConnectionOptions = Command
           const event = parseStreamEventLine(line)
           if (event === undefined) continue
           for (const chunk of handleEvent(event)) {
+            if (chunk.type === 'finish') finished = true
             yield chunk
           }
         }
@@ -1033,6 +1038,7 @@ export class CommandCodeAdapter<C extends CommandCodeConnectionOptions = Command
         const event = parseStreamEventLine(buffer)
         if (event !== undefined) {
           for (const chunk of handleEvent(event)) {
+            if (chunk.type === 'finish') finished = true
             yield chunk
           }
         }
@@ -1053,7 +1059,9 @@ export class CommandCodeAdapter<C extends CommandCodeConnectionOptions = Command
       reader.cancel().catch(() => undefined)
     }
 
-    // If no finish event was emitted, emit a default one
-    yield { type: 'finish', reason: { kind: 'stop' } }
+    // Fallback finish: only when upstream never sent one.
+    if (!finished) {
+      yield { type: 'finish', reason: { kind: 'stop' } }
+    }
   }
 }

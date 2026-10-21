@@ -104,7 +104,10 @@ export class CircuitBreaker {
   /** Record a failed call. */
   recordFailure(): void {
     this.failures += 1
-    if (this.failures === this.threshold) {
+    // `>=` (not `===`): a failed probe in the half-open state leaves
+    // `failures` above the threshold, so a strict equality check would never
+    // refresh `openedAt` and the breaker would stay permanently closed.
+    if (this.failures >= this.threshold) {
       this.openedAt = Date.now()
     }
   }

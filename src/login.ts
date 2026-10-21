@@ -125,6 +125,42 @@ export async function validateCommandApiKey(
  * Login flow controller. One instance per plugin lifecycle.
  * Only one flow can be active at a time.
  */
+/**
+ * Decide how to answer CORS for a loopback callback request.
+ *
+ * The OAuth redirect is a browser top-level navigation, which carries no
+ * `Origin` header — that case is legitimate and needs no CORS response headers
+ * at all (a cross-origin page cannot read a navigation response).
+ *
+ * When an `Origin` header *is* present the request came from script
+ * (fetch/XHR), so it must match the allowlist exactly. Echoing `*` would let
+ * any web page read the callback response and, worse, inject an
+ * attacker-controlled API key via a "simple" cross-origin POST.
+ *
+ * @returns `'none'` — no Origin header, no CORS headers needed;
+ *          `'reject'` — Origin present but not allowlisted;
+ *          otherwise the origin to echo back.
+ */
+export function resolveOriginDecision(
+  originHeader: string | string[] | undefined,
+  port: number,
+): 'none' | 'reject' | string {
+  if (!originHeader) return 'none'
+  const origin = Array.isArray(originHeader) ? originHeader[0] : originHeader
+  if (!origin) return 'none'
+
+  // Loopback origins are allowed only on the port we actually bound.
+  if (
+    origin === `http://127.0.0.1:${port}` ||
+    origin === `http://localhost:${port}` ||
+    origin === `http://[::1]:${port}`
+  ) {
+    return origin
+  }
+  if (LOGIN_ALLOWED_ORIGINS.includes(origin)) return origin
+  return 'reject'
+}
+
 export class CommandCodeLoginFlow {
   private server: Server | undefined
   private port = 0
@@ -206,13 +242,27 @@ export class CommandCodeLoginFlow {
     )
   }
 
+
   private handleCallback(req: IncomingMessage, res: ServerResponse): void {
-    // CORS headers for loopback
-    res.setHeader('Access-Control-Allow-Origin', '*')
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    const decision = resolveOriginDecision(req.headers.origin, this.port)
+
+    if (decision === 'reject') {
+      // Do not emit any CORS header: the calling page must not be able to
+      // read this response.
+      this.sendError(res, 403, 'Origin not allowed')
+      return
+    }
+
+    if (decision !== 'none') {
+      res.setHeader('Access-Control-Allow-Origin', decision)
+      res.setHeader('Vary', 'Origin')
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    }
 
     if (req.method === 'OPTIONS') {
+      // Preflight only ever succeeds for allowlisted origins (disallowed
+      // origins were rejected above).
       res.writeHead(204)
       res.end()
       return
@@ -222,14 +272,22 @@ export class CommandCodeLoginFlow {
 
     if (url.pathname === '/callback' && (req.method === 'GET' || req.method === 'POST')) {
       let body = ''
+      let tooLarge = false
       req.on('data', (chunk) => {
+        if (tooLarge) return
         body += chunk
         if (body.length > LOGIN_BODY_LIMIT_BYTES) {
-          req.destroy()
+          // Respond *before* tearing the socket down: destroying the request
+          // first makes the client see ECONNRESET instead of the 413.
+          tooLarge = true
+          body = ''
+          req.pause()
           this.sendError(res, 413, 'Payload too large')
+          res.once('finish', () => req.destroy())
         }
       })
       req.on('end', () => {
+        if (tooLarge) return
         void this.processCallback(url, body, res)
       })
       return

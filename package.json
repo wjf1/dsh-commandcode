@@ -46,7 +46,8 @@
     "build": "node --import ./polyfill.mjs node_modules/tsdown/dist/run.mjs --config tsdown.config.js",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/**/*.test.ts",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "check:vendor": "node scripts/check-vendor.mjs"
   },
   "engines": {
     "node": ">=20"

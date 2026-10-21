@@ -100,6 +100,36 @@ npm run build
 # Output in ./lib
 ```
 
+This plugin commits its build output (`lib/`) on purpose, so users can install
+it without a toolchain. If you change anything under `src/`, rebuild and commit
+`lib/` as well — CI fails when `lib/` is out of sync with `src/`.
+
+### Refreshing `vendor/` (offline builds)
+
+Every `@deepseek-ai/*` dependency is pinned to a local tarball in `vendor/`
+instead of a registry version, so `npm install` works on a machine with no
+network access to the DeepSeek registry. `package.json` refers to them as
+`file:vendor/<name>-<version>.tgz`.
+
+After bumping a harness SDK version:
+
+```bash
+# 1. Pack the new versions into vendor/ (run where the packages are resolvable)
+mkdir -p vendor
+npm pack @deepseek-ai/dsh-llm@<new-version> --pack-destination vendor
+
+# 2. Point package.json at the new tarball
+#    "file:vendor/deepseek-ai-dsh-llm-<new-version>.tgz"
+
+# 3. Reinstall and rebuild
+npm install
+npm run build
+```
+
+`npm run check:vendor` verifies that every `file:vendor/*.tgz` referenced by
+`package.json` actually exists and is not empty — a cheap check to run before
+publishing, and it needs no network.
+
 ---
 
 ## Configuration
