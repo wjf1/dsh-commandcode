@@ -109,6 +109,11 @@ dsh-commandcode/
 3. **可选：发 npm**。发布后市场 `probe-npm` 自动填 npm 字段；同时 README「快速安装」的 `npm install dsh-commandcode` 才真正成立（当前该包在 npm 上是 404，安装只能走 GitHub）。
 4. ~~补测试~~：**已完成（2026-10-31）**——`adapter` / `catalog` / `retry` 的回归已补齐，`npm test` 101 个用例全绿。
 5. **盯上游**：`0.1.2-alpha.1` 正式发到 npm 后，可以把 `vendor/` 从 `file:` devDependencies 换回正常版本区间并瘦身仓库。
+6. **适配 DSH 0.2.x 宿主（2026-11-01 实测，阻塞补截图）**：本机宿主已自动升级到 `0.2.1-rc.3`（内部 `@deepseek-ai/dsh-*` 同步 0.2.x）。实测结论：
+   ① 插件 `peerDependencies` 声明的 `^0.1.x-rc` 区间被宿主判「不兼容」（安装即 problem）——已把 12 条 peer 全部追加 `|| ^0.2.1-rc.1` 并入库，重装后插件状态恢复 running；
+   ② 但 client 半注入的设置页 UI 在 0.2.x 上**静默失效**：「模型」页不出现 commandcode 提供商卡片、设置里不出现用量面板（同宿主上 `@linxin666/dsh-remote-web-ui` 的卡片注册被宿主明确拒绝，报 slot `plugins.bundle.config` is not declared——0.2.x 重构了 UI 槽位体系）；
+   ③ **补三张截图（panel-usage / card-models / settings-accounts）被此项阻塞**，需先把 client 适配 0.2.x 槽位（可对照 `dsh-usage-statistics-panel` 在 0.2.x 上正常工作的 `sidebar.panellist` 注入方式）。
+   本机已按上述状态安装：登记进 profile 的 dependencies + bundles，包体取自 GitHub 主干（含放宽后的 peer）。
 
 ---
 
