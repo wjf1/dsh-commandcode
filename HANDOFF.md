@@ -1,7 +1,7 @@
 # HANDOFF — dsh-commandcode
 
 > 跨会话接力文档。**新会话接手时先读本文件，再读代码。**
-> 最后更新：2026-10-21 · 对应版本 `v1.1.2`
+> 最后更新：2026-10-31 · 对应版本 `v1.1.2`
 
 ---
 
@@ -16,7 +16,7 @@
 | 版本 | `package.json` = **1.1.2** |
 | 分支 | `main` |
 | 已验证功能 | 提供商路由注册、Models 页卡片、模型目录 SWR、设置页（连接/用量与套餐/多账户/高级）、`/commandcode` 终端命令、OAuth 回环登录、用量与套餐面板、多账户轮换 |
-| 测试 | `npm test` 覆盖 `tests/accounts.test.ts`、`tests/errors.test.ts`（Node 内置 test runner，无第三方测试框架） |
+| 测试 | `npm test` 覆盖 `tests/` 下 6 个文件（accounts / errors / login / retry / adapter / catalog，Node 内置 test runner），101 个用例 |
 | CI | `.github/workflows/ci.yml`：Node 22 → `npm ci` → `typecheck` → `test` → `build` → 校验 `lib/` 三件产物存在 |
 | 发布渠道 | ①GitHub 公开发布（tag + Release）；②DSH 插件市场（awesome-dsh-plugin，条目已收录，PR #3925 于 2026-08-31 合并）；③**未发布到 npm**（`dsh-commandcode` 在 npm 上为 404） |
 | 市场条目 | `data/plugins/wjf1__dsh-commandcode.yml`，`install` 为 `dsh plugin --profile web add github:wjf1/dsh-commandcode`，目录中 version/npm 均为空、无截图 |
@@ -71,7 +71,7 @@ dsh-commandcode/
 │       ├── sessions.ts     # 图片会话错误包装
 │       ├── update.ts       # 更新检查
 │       └── version.ts      # 版本常量
-├── tests/                  # accounts.test.ts / errors.test.ts
+├── tests/                  # accounts / errors / login / retry / adapter / catalog 六个回归测试
 ├── lib/                    # 预构建产物，刻意提交（见避坑 1）
 ├── vendor/                 # 0.1.2-alpha.1 依赖闭包 tarball
 ├── cordis.patch.yml        # Bundle 层：insert id=llm-commandcode，config.apiKeyEnv=COMMANDCODE_API_KEY
@@ -95,14 +95,19 @@ dsh-commandcode/
 
 **本轮（2026-10-21，未发版）** — 补齐发布门禁要求的四文档：新增 `HANDOFF.md`；双语 README 增加截图章节与 `lib/` 提交原因说明、补全项目结构树；CHANGELOG 增加 `[Unreleased]` 小节。随后创建 **首个** annotated tag `v1.1.2` 与 GitHub Release（此前仓库无任何 tag 与 Release）。
 
+**本轮（2026-10-31，未发版）** — 测试补齐与市场条目更新：
+
+1. **测试补齐**：新增 `tests/adapter.test.ts`（41 用例：SSE 流解析、finish 兜底守卫、429/401 轮换、超时/网络错误映射、getUsage 四端点聚合与 blocked 分类、probeFiveHourWindow、凭证文件解析等）与 `tests/catalog.test.ts`（14 用例：响应解析、SWR、ETag/304、磁盘缓存、熔断门控与强制刷新），`tests/retry.test.ts` 追加 `buildRetryPolicy` / 重试码常量 / `backoffDelay` / `sleep` 的 AbortSignal 行为（9 用例）。`npm test` 共 **101 个用例全部通过**（Node 22 本机验证）。
+2. **市场条目更新（PR [#10798](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/10798)，待合并）**：`data/plugins/wjf1__dsh-commandcode.yml` 的 description 对齐双语 README 一句话定位。经查上游 `scripts/lib/entries.mjs` 的 `ENTRY_KEYS` 白名单（url/name/category/description/icon/tarball/file），条目 schema **不支持** version/npm/install/screenshots 字段：npm 由 `probe-npm` 从仓库自动解析、install 命令按 URL 自动生成（当前 npm 404，安装走 GitHub，与实际一致）、version 以 GitHub Release v1.1.2 表达；v1.1.2 Release 无 `.tgz` 资产故不写 tarball。提交走 GitHub REST API（merge-upstream 同步 fork → git/refs 建分支 `update-entry-v1-1-2` → PUT contents → PR）。
+
 ---
 
 ## 5. 待办与下一步
 
-1. **补真实截图**：在 DSH Desktop 0.7.1 内实拍 `assets/panel-usage.png`、`assets/card-models.png`、`assets/settings-accounts.png`，把 `screenshots.json` 从空数组改成实际清单，再向市场提条目更新，让卡片带图。
-2. **市场条目补版本**：`data/plugins/wjf1__dsh-commandcode.yml` 目前 version/npm 为空。仓库有了 tag 与 Release 后，提一次「更新条目」PR（改 description、确认 install 方式、加 screenshots）。
-3. **可选：发 npm**。发布后市场抓取器才能填 `npm` 字段；同时 README「快速安装」的 `npm install dsh-commandcode` 才真正成立（当前该包在 npm 上是 404，安装只能走 GitHub）。
-4. **补测试**：现有测试只覆盖 `accounts` 与 `errors`，`adapter` / `catalog` / `retry` 的回归仍有空档（README 早期宣传的「覆盖 errors/accounts/catalog/adapter」与实际测试文件不符，已在文档层按实际收口）。
+1. **盯市场 PR 合并**：PR [#10798](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/10798)（分支 `update-entry-v1-1-2`）已在 CI 走查中，合并后确认上游 README 两份生成文件里 `wjf1/dsh-commandcode` 行已同步为新 description。
+2. **补真实截图**：在 DSH Desktop 0.7.1 内实拍 `assets/panel-usage.png`、`assets/card-models.png`、`assets/settings-accounts.png`，把 `screenshots.json` 从空数组改成实际清单，再向市场提一次条目更新（届时可在 Release 补 `.tgz` 资产并加 `tarball` 字段，市场索引即可展示版本号）。
+3. **可选：发 npm**。发布后市场 `probe-npm` 自动填 npm 字段；同时 README「快速安装」的 `npm install dsh-commandcode` 才真正成立（当前该包在 npm 上是 404，安装只能走 GitHub）。
+4. ~~补测试~~：**已完成（2026-10-31）**——`adapter` / `catalog` / `retry` 的回归已补齐，`npm test` 101 个用例全绿。
 5. **盯上游**：`0.1.2-alpha.1` 正式发到 npm 后，可以把 `vendor/` 从 `file:` devDependencies 换回正常版本区间并瘦身仓库。
 
 ---

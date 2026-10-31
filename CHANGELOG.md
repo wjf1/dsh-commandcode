@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `README.md` 与 `README.zh-CN.md` 新增「截图 / Screenshots」章节与配图说明，并补上 `lib/` 为何刻意提交进仓库的说明
 - `tests/login.test.ts`：登录回调 CORS 判定的回归测试（顶级导航 / 回环来源 / 白名单来源 / 任意来源拒绝）
 - `tests/retry.test.ts`：熔断器状态机回归测试（达阈值熔断 / 半开探测失败重新熔断 / 探测成功恢复）
+- `tests/adapter.test.ts`：适配器回归测试（41 个用例）——SSE/JSONL 流解析与 text/reasoning/tool-call 块组装、`finish` 兜底守卫（不重复结算）、finish reason 映射、SSE 注释与 `[DONE]` 行忽略、末尾无换行残行 flush、429/401 多账户轮换（含已试 key 不复用）、请求超时与网络错误映射、CLI 版本与授权头、system 提示折叠、`max_tokens` 按 catalog 与硬上限钳制、`reasoning_effort` 支持性判定、工具 schema 转换、tool-result 配对与孤儿丢弃、`getUsage` 四端点聚合与 `blocked` 三态分类（401/5xx/网络）、ISO 账期解析、`probeFiveHourWindow` 新旧响应 shape、`resolveAuthFileApiKey` 各凭证文件 shape、计划过滤与能力描述纯函数
+- `tests/catalog.test.ts`：模型目录回归测试（14 个用例）——`parseCatalogResponse` 双字段拼写 / 无效条目跳过 / 空目录与非 list shape 报错，`ModelCatalog` 的 SWR 后台刷新（非阻塞）、ETag 条件请求与 304 处理、磁盘缓存命中免网络、强制刷新失败降级旧目录、熔断器开门后拒绝请求且 `refreshNow` 强制绕过、`find` 命中路径、`state` 诊断
+- `tests/retry.test.ts` 追加：`buildRetryPolicy`（默认值与覆盖合并、可重试码集合）、重试码常量分区（可重试 / 永不重试互斥）、`backoffDelay` 指数上界与封顶、`sleep` 的 AbortSignal 行为（已中止立即拒绝 / 中途中止及时返回）
+- 测试套件新增 64 个用例，`npm test` 共 101 个用例全部通过（Node 内置 test runner）
 - CI 增加「`lib/` 是否与 `src/` 同步」的校验：`lib/` 是提交进仓库的产物，只检查文件存在无法发现忘记重建
 
 ### Fixed
