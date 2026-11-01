@@ -5,6 +5,13 @@ All notable changes to **dsh-commandcode** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.3] - 2026-11-01
+
+### 修复
+
+- **兼容 DSH 0.2.x 宿主**：12 条 `peerDependencies` 追加 `^0.2.1-rc.1` 区间（宿主 0.2.1-rc.3 下安装即 problem 的根因）；client 注册改为懒声明感知（`whenSlotDeclared`，0.1.2-alpha.1 起 API 兼容）。
+- **市场防御**：npm 名 `dsh-commandcode` 被第三方抢注，本版起以 GitHub Release 附官方 tarball，市场条目钉 `tarball:` 字段。
+
 ## [Unreleased]
 
 ### Added

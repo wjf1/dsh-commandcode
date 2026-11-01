@@ -112,7 +112,7 @@ dsh-commandcode/
 
 1. **盯市场 PR 合并**：PR [#10798](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/10798)（分支 `update-entry-v1-1-2`）已在 CI 走查中，合并后确认上游 README 两份生成文件里 `wjf1/dsh-commandcode` 行已同步为新 description。
 2. **补真实截图**：在 DSH Desktop 0.7.1 内实拍 `assets/panel-usage.png`、`assets/card-models.png`、`assets/settings-accounts.png`，把 `screenshots.json` 从空数组改成实际清单，再向市场提一次条目更新（届时可在 Release 补 `.tgz` 资产并加 `tarball` 字段，市场索引即可展示版本号）。
-3. **可选：发 npm**。发布后市场 `probe-npm` 自动填 npm 字段；同时 README「快速安装」的 `npm install dsh-commandcode` 才真正成立（当前该包在 npm 上是 404，安装只能走 GitHub）。
+3. ~~可选：发 npm~~ **被抢注阻塞（2026-11-01）**：npm 名 `dsh-commandcode` 已被第三方 `code_tin <code_tin@msn.com>` 于本日 21:17（UTC 13:17）抢注（连发 0.0.0-stage/0.1.0/0.1.1，实现为同类竞品、无恶意钩子，但会劫持市场 probe-npm 的自动解析）。本账号 `jianfengwang` 发布 403。**防御**：GitHub Release `v1.1.3` 附官方 npm tarball，市场条目钉 `tarball:` 字段指向该资产，市场安装永不落到冒牌包。用户可选项：向 npm 举报抢注 / 换名（如 `@jianfengwang/dsh-commandcode`）/ 接受 GitHub 安装现状。
 4. ~~补测试~~：**已完成（2026-10-31）**——`adapter` / `catalog` / `retry` 的回归已补齐，`npm test` 101 个用例全绿。
 5. **盯上游**：`0.1.2-alpha.1` 正式发到 npm 后，可以把 `vendor/` 从 `file:` devDependencies 换回正常版本区间并瘦身仓库。
 6. **适配 DSH 0.2.x 宿主（2026-11-01 两轮实测，阻塞补截图）**：本机宿主已自动升级到 `0.2.1-rc.3`（内部 `@deepseek-ai/dsh-*` 同步 0.2.x）。两轮排查后的精确结论：
