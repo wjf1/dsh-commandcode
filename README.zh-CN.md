@@ -51,6 +51,7 @@
 
 ### 版本适配
 - **兼容 DeepSeek Harness 0.1.2-alpha.1** — 面向 DSH Desktop 0.7.x：使用 `@deepseek-ai/dsh-client-store`（接替已删除的 `dsh-client-runtime`）、响应式 `SettingsScope` 快照契约、`credentials` Remote 命名空间，用量/登录后端走共享 `/api` 精确 Fetch 路由
+- **DSH 0.2.x（DeepSeek Harness 0.2.1-rc.3）现状** — peer 依赖已放宽、client 半的设置页槽位注册已按 0.2.x 的懒声明时序加固；但在 0.2.1-rc.3 实机上宿主装载层仍未激活本插件组件（详见 `HANDOFF.md` 第 5 节第 6 条），设置 UI 暂不可用，解锁后在本节更新
 - **一键安装** — 添加到 profile 的 `dsh.profile.bundles` 后重启即可，无需手动构建
 - **TypeScript 构建** — 通过 `tsdown` 可复现构建，输出 ESM 格式和类型声明
 
@@ -59,7 +60,7 @@
 ## 安装
 
 ### 前置要求
-- DSH-Desktop >= 0.7.0（DeepSeek Harness 0.1.2-alpha.1）
+- DSH-Desktop >= 0.7.0（DeepSeek Harness 0.1.2-alpha.1）；0.2.x 装载层兼容进行中，见「版本适配」
 - Node.js >= 20（仅开发/构建需要；桌面应用自带运行时）
 - 一个 Command Code 账户和 API Key 或订阅
 

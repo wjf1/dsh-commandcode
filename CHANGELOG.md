@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tests/retry.test.ts` 追加：`buildRetryPolicy`（默认值与覆盖合并、可重试码集合）、重试码常量分区（可重试 / 永不重试互斥）、`backoffDelay` 指数上界与封顶、`sleep` 的 AbortSignal 行为（已中止立即拒绝 / 中途中止及时返回）
 - 测试套件新增 64 个用例，`npm test` 共 101 个用例全部通过（Node 内置 test runner）
 - CI 增加「`lib/` 是否与 `src/` 同步」的校验：`lib/` 是提交进仓库的产物，只检查文件存在无法发现忘记重建
+- `src/client/index.ts`：新增 `whenSlotDeclared` 注册辅助，为 DSH 0.2.x 的懒声明槽位加固设置页两处注册（`settings.section` 与 `settings.models.provider-card`）——0.2.x 把这两个槽位的声明推迟到设置弹窗的条目 children 表（`sidebar.settings` → Models section），client 在启动时注册会在声明出现前落空；现在先探测声明、未声明则订阅声明边界（`subscribeDeclaration`，0.1.2-alpha.1 起即存在于 SlotCore 合同）等声明出现再注册，宿主级联释放后自动复位重试；仅吞「slot not declared」竞态错误，其余注册错误保持原样抛出
+
+### Fixed
 
 ### Fixed
 

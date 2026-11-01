@@ -100,6 +100,12 @@ dsh-commandcode/
 1. **测试补齐**：新增 `tests/adapter.test.ts`（41 用例：SSE 流解析、finish 兜底守卫、429/401 轮换、超时/网络错误映射、getUsage 四端点聚合与 blocked 分类、probeFiveHourWindow、凭证文件解析等）与 `tests/catalog.test.ts`（14 用例：响应解析、SWR、ETag/304、磁盘缓存、熔断门控与强制刷新），`tests/retry.test.ts` 追加 `buildRetryPolicy` / 重试码常量 / `backoffDelay` / `sleep` 的 AbortSignal 行为（9 用例）。`npm test` 共 **101 个用例全部通过**（Node 22 本机验证）。
 2. **市场条目更新（PR [#10798](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/10798)，待合并）**：`data/plugins/wjf1__dsh-commandcode.yml` 的 description 对齐双语 README 一句话定位。经查上游 `scripts/lib/entries.mjs` 的 `ENTRY_KEYS` 白名单（url/name/category/description/icon/tarball/file），条目 schema **不支持** version/npm/install/screenshots 字段：npm 由 `probe-npm` 从仓库自动解析、install 命令按 URL 自动生成（当前 npm 404，安装走 GitHub，与实际一致）、version 以 GitHub Release v1.1.2 表达；v1.1.2 Release 无 `.tgz` 资产故不写 tarball。提交走 GitHub REST API（merge-upstream 同步 fork → git/refs 建分支 `update-entry-v1-1-2` → PUT contents → PR）。
 
+**本轮（2026-11-01，未发版）** — DSH 0.2.x client 半适配加固与装载层阻塞定性：
+
+1. **`src/client/index.ts` 新增 `whenSlotDeclared`**：设置页两处槽位注册（`settings.section` / `settings.models.provider-card`）改为「探测声明 → 未声明则 `subscribeDeclaration` 等声明边界再注册」的防御模式（0.2.x 把设置 chrome 的槽位声明推迟到设置弹窗条目的 children 表；`npm run typecheck` 与 `npm run build` 通过，产物已部署本机 profile）。
+2. **装载层根因定性**（详见第 5 节第 6 条）：插件组件 row `llm-commandcode` 在 0.2.1-rc.3 上 `phase: null`（fiber 从未创建），`dsh-client-modules` registry 因此不把 client bundle 放进启动 manifest，client 半从未执行——设置 UI 静默失效的根因在宿主装载层，client 槽位名与注册 API 与 0.1.x 相比未变。peer 兼容、bundles 位置、modules overlay、文件解析等假设逐一排除，激活错误因宿主无日志/CLI/主进程调试通道而无法浮出。
+3. **三张市场截图继续阻塞**：UI 未渲染，无法拍摄。排障过程沉淀的全部证据与解锁路径已写入第 5 节第 6 条。
+
 ---
 
 ## 5. 待办与下一步
@@ -109,11 +115,14 @@ dsh-commandcode/
 3. **可选：发 npm**。发布后市场 `probe-npm` 自动填 npm 字段；同时 README「快速安装」的 `npm install dsh-commandcode` 才真正成立（当前该包在 npm 上是 404，安装只能走 GitHub）。
 4. ~~补测试~~：**已完成（2026-10-31）**——`adapter` / `catalog` / `retry` 的回归已补齐，`npm test` 101 个用例全绿。
 5. **盯上游**：`0.1.2-alpha.1` 正式发到 npm 后，可以把 `vendor/` 从 `file:` devDependencies 换回正常版本区间并瘦身仓库。
-6. **适配 DSH 0.2.x 宿主（2026-11-01 实测，阻塞补截图）**：本机宿主已自动升级到 `0.2.1-rc.3`（内部 `@deepseek-ai/dsh-*` 同步 0.2.x）。实测结论：
-   ① 插件 `peerDependencies` 声明的 `^0.1.x-rc` 区间被宿主判「不兼容」（安装即 problem）——已把 12 条 peer 全部追加 `|| ^0.2.1-rc.1` 并入库，重装后插件状态恢复 running；
-   ② 但 client 半注入的设置页 UI 在 0.2.x 上**静默失效**：「模型」页不出现 commandcode 提供商卡片、设置里不出现用量面板（同宿主上 `@linxin666/dsh-remote-web-ui` 的卡片注册被宿主明确拒绝，报 slot `plugins.bundle.config` is not declared——0.2.x 重构了 UI 槽位体系）；
-   ③ **补三张截图（panel-usage / card-models / settings-accounts）被此项阻塞**，需先把 client 适配 0.2.x 槽位（可对照 `dsh-usage-statistics-panel` 在 0.2.x 上正常工作的 `sidebar.panellist` 注入方式）。
-   本机已按上述状态安装：登记进 profile 的 dependencies + bundles，包体取自 GitHub 主干（含放宽后的 peer）。
+6. **适配 DSH 0.2.x 宿主（2026-11-01 两轮实测，阻塞补截图）**：本机宿主已自动升级到 `0.2.1-rc.3`（内部 `@deepseek-ai/dsh-*` 同步 0.2.x）。两轮排查后的精确结论：
+   ① **UI 槽位名没有变，注册 API 也没有变**：0.2.x 的 `settings.section` 由设置弹窗 shell（`ui-settings-general`）的 `sidebar.settings` 条目 children 表声明（kind list），`settings.models.provider-card` 由其中 Models 条目的 children 声明（kind keyed，key = provider 的 settingsNs `llm-commandcode`，`renderSlot` 时传入 `provider/configured/keyConfigured` props）。`ctx.slots.inject(name, factory)` 的语义是「声明已存在才调 factory，否则等声明边界再调」（实现在 `dsh-client-ui-renderer` 的 `SlotRegistry.inject`）。
+   ② **client 侧已做懒声明防御**（`whenSlotDeclared`：先探测注册、未声明则 `subscribeDeclaration` 等声明出现再注册，仅吞 not declared 竞态错误）——`src/client/index.ts`、已构建部署。0.1.2-alpha.1 的 SlotCore 合同同样有 `subscribeDeclaration`，0.1.x 兼容不受影响。
+   ③ **真正的卡点在装载层，不在 client**：插件详情页（插件 → dsh-commandcode）显示组件 `llm-commandcode` **「未运行」**——React store 数据为 `enabled: true, phase: null`（row 存在、未禁用、但 fiber 从未创建）；而插件页列表的 `data-plugin-status="running"` 只是包级安装状态，会掩盖组件未激活。由于 `dsh-client-modules` 的 `ClientModuleRegistry` 扫描 loader entries 时跳过 `entry.fiber === void 0` 的行，本插件 client bundle 从未进入启动 manifest（`window.__DSH_BOOT__.entries` 共 94 项无 dsh-commandcode；`fetch /plugins/dsh-commandcode/client.js` 返回 404），client 半**从未被执行**（head 中无 `style[data-plugin="dsh-commandcode"]` 标记）——这才是设置 UI 静默失效的根因。client 槽位注册代码再正确也不会被调用。
+   ④ **已排除的原因**：peer 兼容性（12 条 dsh-* peer 用宿主同款 `semver.satisfies(0.2.1-rc.3, range, {includePrerelease: true})` 逐一验证全部满足）；`dsh.profile.bundles` 栈位置（把 dsh-commandcode 从末位前移到 vision-router 之前并重启，无效，已还原）；给官方 `modules` row 追加 `inject: [webServer]`（dsh-vision-router 的已知竞态 workaround，对本例无效，workaround 保留在 cordis.patch.yml 末尾）；profile 树内文件解析（`createRequire(profiles/desktop/node_modules).resolve('dsh-commandcode/package.json')` 正常，exports/dsh.client 合法）。
+   ⑤ **激活错误无法浮出**：宿主 0.2.1-rc.3 无常规运行日志文件（`logs/` 只有 crash 转储）、本机无 `dsh` CLI、主进程无 `--inspect`；用 `Start-Process -RedirectStandardError` 捕获 stderr 也没有 cordis 层 deny/preflight 诊断（`dsh-app-boot` 的 `prepareProfileEntries` 会把「disabling profile plugin row …」写到 stderr，本例没有出现，说明 row 未被显式 deny，而是停在未激活）。
+   ⑥ **补三张截图（panel-usage / card-models / settings-accounts）继续被此项阻塞**。解锁路径建议（按性价比排序）：a) 给宿主主进程开 `--inspect` 或找到上游日志开关后重启，读 llm-commandcode row 的激活错误；b) 若上游发布带 CLI 的版本，用 `dsh --dump-config` 对照 include 树中该 row 的最终形态；c) 对照宿主上同样「组件未运行」过的插件（如 `@michengai/dsh-archive-manager`、`@michengai/dsh-im-connect` 曾因 peer 不兼容被 deny 后豁免恢复）确认恢复手法是否适用于本例；d) 等 0.2.1 正式版看装载层是否变化。
+   本机已按上述状态安装：登记进 profile 的 dependencies + bundles（`^1.1.2`，裸目录手动部署于 `profiles/desktop/node_modules/dsh-commandcode`，lib/ 与 src/ 同步）。
 
 ---
 

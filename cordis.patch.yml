@@ -9,3 +9,14 @@
       name: "dsh-commandcode"
       config:
         apiKeyEnv: COMMANDCODE_API_KEY
+
+# DSH 0.1.5+ family: the client-modules Node half can drop a late-activating
+# client bundle to the Cordis service-access race ("webServer without
+# inject"), which leaves the bundle out of the boot manifest and the client
+# half silently unloaded. dsh-vision-router ships the same workaround: give
+# the official modules row an explicit webServer activation dependency so the
+# registry's seed pass covers rows that activate after it. The existing row
+# is only patched (inject appended), never replaced.
+- id: modules
+  name: "@deepseek-ai/dsh-client-modules"
+  inject: [webServer]

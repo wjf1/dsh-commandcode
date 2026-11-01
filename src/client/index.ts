@@ -13,6 +13,13 @@
  * backends are Host Fetch routes under `/api/commandcode/*` reached with
  * plain same-origin `fetch` (the shared `/api` channel applies its own
  * trust and browser-authentication policy).
+ *
+ * 0.2.x note: the slot names are unchanged, but the host now declares them
+ * lazily (`settings.section` from the sidebar.settings children table,
+ * `settings.models.provider-card` from the Models section's children), so a
+ * boot-time registration loses the race and is dropped with a logged "not
+ * declared" error. Both registrations go through `whenSlotDeclared`, which
+ * probes once and subscribes to the declaration boundary for the lazy case.
  */
 
 import type { Context } from '@deepseek-ai/cordis'
@@ -245,29 +252,95 @@ export function apply(ctx: Context): void {
     t: (key: keyof ClientLocale) => t()(key),
   })
 
-  ctx.slots.inject('settings.section', () => ctx.slots.register({
-    name: 'settings.section',
-    id: 'commandcode',
-    order: 12,
-    label: () => t()('nav'),
-    inject: injected,
-  }, CommandCodeSettingsPage))
+  // 0.2.x declares both slots lazily (sidebar.settings children table, then
+  // the Models section's children); see whenSlotDeclared for the recovery.
+  ctx.slots.inject('settings.section', () => whenSlotDeclared(
+    ctx,
+    'settings.section',
+    () => ctx.slots.register({
+      name: 'settings.section',
+      id: 'commandcode',
+      order: 12,
+      label: () => t()('nav'),
+      inject: injected,
+    }, CommandCodeSettingsPage),
+  ))
 
-  ctx.slots.inject('settings.models.provider-card', () => ctx.slots.register({
-    name: 'settings.models.provider-card',
-    key: 'llm-commandcode',
-    inject: () => ({
-      hooks: { commandCodeSettings: store, commandCodeLogin: loginStore },
-      edit: (field: string, text: string) => controller.edit(field, text),
-      save: () => void controller.save().then(() => {
-        const settled = controller.state()
-        if (!settled.failed && settled.anyAccountConfigured) void usageController.refresh()
+  ctx.slots.inject('settings.models.provider-card', () => whenSlotDeclared(
+    ctx,
+    'settings.models.provider-card',
+    () => ctx.slots.register({
+      name: 'settings.models.provider-card',
+      key: 'llm-commandcode',
+      inject: () => ({
+        hooks: { commandCodeSettings: store, commandCodeLogin: loginStore },
+        edit: (field: string, text: string) => controller.edit(field, text),
+        save: () => void controller.save().then(() => {
+          const settled = controller.state()
+          if (!settled.failed && settled.anyAccountConfigured) void usageController.refresh()
+        }),
+        beginLogin: () => void loginController.begin(),
+        cancelLogin: () => void loginController.cancel(),
+        t: (key: keyof ClientLocale) => t()(key),
       }),
-      beginLogin: () => void loginController.begin(),
-      cancelLogin: () => void loginController.cancel(),
-      t: (key: keyof ClientLocale) => t()(key),
-    }),
-  }, CommandCodeProviderCard))
+    }, CommandCodeProviderCard),
+  ))
+}
+
+/**
+ * Register into a slot whose declaration may lag behind our client load.
+ *
+ * DSH 0.2.x made the settings chrome lazy: `settings.section` is declared by
+ * the `sidebar.settings` entry's children table (ui-settings-general), and
+ * `settings.models.provider-card` by the Models entry inside it, so neither
+ * spec exists until the app shell mounts the sidebar/settings tree. A plugin
+ * client loaded at boot runs its `ctx.slots.inject` factory before that; the
+ * inner `register` then throws `slot "X" is not declared (a parent entry's
+ * children table must declare it)`, the host logs it and never retries, and
+ * the UI contribution is lost silently.
+ *
+ * The recovery pattern is the one dsh-usage-statistics-panel uses for its
+ * composer-dock takeover: probe once (covers hosts where the declaration is
+ * already live, which is what 0.1.x looked like), and on the undeclared race
+ * subscribe to the declaration boundary and register when the slot appears.
+ * `subscribeDeclaration` exists on the SlotCore contract since 0.1.2-alpha.1;
+ * on older hosts where the service lacks it we keep the single probe and rely
+ * on the old host's inject timing. Host-driven cascade disposal (settings
+ * modal closed → declaration collapsed) runs our disposer, which resets the
+ * latch, so the next declaration re-registers.
+ */
+function whenSlotDeclared(
+  ctx: Context,
+  name: string,
+  doRegister: () => () => void,
+): () => void {
+  let release: (() => void) | undefined
+  const decide = (): void => {
+    if (release !== undefined) return
+    try {
+      const disposer = doRegister()
+      release = () => {
+        disposer()
+        release = undefined
+      }
+    } catch (error) {
+      // Only the undeclared race is recoverable; any other register failure
+      // is a real bug (duplicate key, wrong kind) and must stay loud.
+      if (!(error instanceof Error) || !error.message.includes('is not declared')) {
+        throw error
+      }
+    }
+  }
+  const slots = ctx.slots as typeof ctx.slots & {
+    subscribeDeclaration?: (key: string, fn: () => void) => () => void
+  }
+  const unsubscribe = slots.subscribeDeclaration?.(name, decide)
+  decide()
+  return () => {
+    unsubscribe?.()
+    release?.()
+    release = undefined
+  }
 }
 
 async function fetchLoginStatus(

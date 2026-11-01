@@ -51,6 +51,7 @@ The screenshots below come from real runs inside DSH Desktop 0.7.1. After instal
 
 ### Version Adaptation
 - **DeepSeek Harness 0.1.2-alpha.1 Compatible** — Built for DSH Desktop 0.7.x: uses `@deepseek-ai/dsh-client-store` (replaces the deleted `dsh-client-runtime`), the reactive `SettingsScope` snapshot contract, the `credentials` Remote namespace, and the shared `/api` exact-Fetch-route registry for the usage/login backends
+- **DSH 0.2.x (DeepSeek Harness 0.2.1-rc.3) status** — Peer ranges widened and the client-half settings-slot registrations hardened for 0.2.x's lazy slot declarations; however, on 0.2.1-rc.3 the host loader has not yet activated this plugin's component (see `HANDOFF.md` section 5, item 6), so the settings UI is unavailable there — this section will be updated once unlocked
 - **One-Click Install** — Add to profile's `dsh.profile.bundles` and restart; no manual build steps required
 - **TypeScript Build** — Reproducible build via `tsdown` with ESM output and type declarations
 
@@ -59,7 +60,7 @@ The screenshots below come from real runs inside DSH Desktop 0.7.1. After instal
 ## Installation
 
 ### Prerequisites
-- DSH-Desktop >= 0.7.0 (DeepSeek Harness 0.1.2-alpha.1)
+- DSH-Desktop >= 0.7.0 (DeepSeek Harness 0.1.2-alpha.1); 0.2.x loader compatibility in progress, see "Version Adaptation"
 - Node.js >= 20 (for development/build only; the desktop app bundles its own runtime)
 - A Command Code account with API key or subscription
 
