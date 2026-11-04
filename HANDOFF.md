@@ -126,6 +126,10 @@ dsh-commandcode/
 
 ---
 
+### 市场提交的 stale fork 守卫（2026-11-04）
+
+市场 PR 的 `Repository config guard` 会在分支里出现任何 `.github/` 变更时判红——**这不是插件问题**，而是 fork 陈旧：分支仍带着旧版 `.github/ISSUE_TEMPLATE/list-problem.yml`。处置：只用 REST API 删掉该文件（`DELETE /contents/.github/...`，带 `sha` + `branch`），不要 `git checkout FETCH_HEAD -- .github`（本机 token 缺 `workflow` scope 时推不动）。删后 check 会以新 head 重跑。
+
 ## 6. 关键避坑与运行约束
 
 1. **`lib/` 必须提交，且改 `src/` 后必须重建**。市场安装不做构建，缺少 `lib/` 就是「装了但没反应」。只提交 `src/` 的提交等于发布了一个坏包。
