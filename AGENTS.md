@@ -9,6 +9,8 @@ DSH 桌面版的 Command Code LLM 提供商插件：把本机 Command Code 代�
 - 包名 `@jianfengwang/dsh-commandcode`，当前版本 **1.1.3**（2026-11-01 发布，兼容 DSH 0.2.x 宿主）。
 - 技术栈：TypeScript + ESM（`"type": "module"`），tsdown 构建，测试用 Node 内置 `node:test` + tsx。
 - 发布形态特殊：`lib/` 预构建产物**刻意提交进仓库**（市场安装不做构建），依赖以 `file:vendor/*.tgz` 本地包形式 vendored。
+- 关键目录：`src/adapter.ts`（线路协议解析 + 重试策略，核心文件）、`src/` 其余为模型目录 / 多账号 / 凭证 / 本地化模块、`tests/`（node:test 回归测试）、`vendor/`（DSH peer 依赖 tgz，勿手改）、`cordis.patch.yml`（DSH bundle 补丁声明）、`polyfill.mjs`（构建入口 polyfill）。
+- 运行环境：Node >= 20；CI 用 Node 22.x。
 
 ## 构建与测试命令
 
@@ -29,8 +31,10 @@ CI 流程：typecheck → test → build → 校验 `lib/index.js`、`lib/index.
 - 缩进 2 空格，单引号，**语句末尾不加分号**；import 分组（node: 内置 → 类型 → 本地）。
 - 文件头用 JSDoc 块注释概括模块职责与关键协议（见 `src/adapter.ts` 头部），内部注释克制、只在协议/坑点处出现。
 - 命名 camelCase；类型与接口 PascalCase；测试文件 `tests/*.test.ts` 与 `src/` 结构对应。
+- React 18（peer 依赖）写设置页 UI，client 端注入 `@deepseek-ai/dsh-client-connection` / `-locale` / `-ui-settings`（见 package.json `dsh` 字段），平台为 web。
 - 配置项一律做成**逐请求 thunk 解析**（而非启动时快照），改设置立刻对下一次请求生效，沿用此模式。
 - 错误对象（`CommandCodeError`）上下文带 status/model/account/requestId，**绝不能带 API key**。
+- 登录回调只绑回环 127.0.0.1（端口 18700–18799）并做 CORS origin 校验。
 
 ## 提交与发布规范
 

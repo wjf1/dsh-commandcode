@@ -18,9 +18,9 @@
 | 已验证功能 | 提供商路由注册、Models 页卡片、模型目录 SWR、设置页（连接/用量与套餐/多账户/高级）、`/commandcode` 终端命令、OAuth 回环登录、用量与套餐面板、多账户轮换 |
 | 测试 | `npm test` 覆盖 `tests/` 下 6 个文件（accounts / errors / login / retry / adapter / catalog，Node 内置 test runner），101 个用例 |
 | CI | `.github/workflows/ci.yml`：Node 22 → `npm ci` → `typecheck` → `test` → `build` → 校验 `lib/` 三件产物存在 |
-| 发布渠道 | ①GitHub 公开发布（tag + Release）；②DSH 插件市场（awesome-dsh-plugin，条目已收录，PR #3925 于 2026-08-31 合并）；③**未发布到 npm**（npm 名 `dsh-commandcode` 已被第三方抢注，2026-11-01 起 GitHub Release 附官方 tarball 供市场条目钉定） |
+| 发布渠道 | ①GitHub 公开发布（tag + Release）；②DSH 插件市场（awesome-dsh-plugin，条目已收录，PR #3925 于 2026-08-31 合并）；③**npm 已发布** `@jianfengwang/dsh-commandcode@1.1.3`（2026-11-08 换名首发；裸名仍被第三方占用，GitHub Release tarball 钉定继续生效） |
 | 市场条目 | `data/plugins/wjf1__dsh-commandcode.yml`，`install` 为 `dsh plugin --profile web add github:wjf1/dsh-commandcode`，目录中 version/npm 均为空、无截图 |
-| 已知缺口 | `assets/` 目录尚未入库（README 截图章节指向 `assets/*.png`，需补真实截图）；`screenshots.json` 目前是 `{"screenshots": []}` |
+| 已知缺口 | `assets/` 目录尚未入库（README 截图章节指向 `assets/*.png`，需补真实截图）；`screenshots.json` 目前是 `{"screenshots": []}`；本机 profile 依赖登记仍为旧名 `dsh-commandcode ^1.1.2`，需切到 `@jianfengwang/dsh-commandcode ^1.1.3`（随真机批次执行，动 node_modules 需宿主在场） |
 
 ---
 
