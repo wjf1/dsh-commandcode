@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- 包名迁移：`dsh-commandcode` → `@jianfengwang/dsh-commandcode`（npm 名被第三方抢注后的换名决策，2026-11-08 负责人拍板）；README 安装命令同步更新，GitHub 安装与市场 tarball 钉定不受影响
+
 ### Added
 
 - `HANDOFF.md`：补齐四文档门禁要求的跨会话接力文档（项目概况与当前状态 / 技术栈与运行基线 / 核心架构与文件拓扑 / 最近一轮变更 / 待办与下一步 / 关键避坑与运行约束）

@@ -1,5 +1,5 @@
 {
-  "name": "dsh-commandcode",
+  "name": "@jianfengwang/dsh-commandcode",
   "version": "1.1.3",
   "description": "DSH-Desktop LLM provider plugin for Command Code with model catalog sync, request retry, multi-credential support, and a settings UI.",
   "type": "module",

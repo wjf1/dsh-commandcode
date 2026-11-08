@@ -70,7 +70,7 @@ Add the plugin to your DSH profile's `package.json`:
 
 ```bash
 # In your profile directory (e.g. ~/.dsh/profiles/desktop/)
-npm install dsh-commandcode
+npm install @jianfengwang/dsh-commandcode
 ```
 
 Then add it to `dsh.profile.bundles` in `package.json`:

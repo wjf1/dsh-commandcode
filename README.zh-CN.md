@@ -70,7 +70,7 @@
 
 ```bash
 # 在 profile 目录下（如 ~/.dsh/profiles/desktop/）
-npm install dsh-commandcode
+npm install @jianfengwang/dsh-commandcode
 ```
 
 然后在 `package.json` 的 `dsh.profile.bundles` 中添加：
