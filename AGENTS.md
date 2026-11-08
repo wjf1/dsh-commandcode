@@ -40,7 +40,7 @@ CI 流程：typecheck → test → build → 校验 `lib/index.js`、`lib/index.
 
 - 提交信息用 Conventional Commits 且描述为中文：`fix(peers): ...`、`docs: ...`、`test: ...`、`chore(release): v1.1.3——<中文摘要>`。
 - 变更记录写入 `CHANGELOG.md`（Keep a Changelog：`[Unreleased]` / `[X.Y.Z] - 日期`，中文六类分类）；版本发布需 package.json / CHANGELOG / README / HANDOFF 四文档齐备且版本一致。
-- 发布流程：测试通过 → 四文档核验 → `git tag -a vX.Y.Z -m "vX.Y.Z: 中文摘要"` → `git push origin main --tags` → 建 GitHub Release（标题与 tag subject 逐字一致）。市场条目钉 `tarball:` 字段（npm 名已被第三方抢注，勿尝试 `npm publish` 该名字）。
+- 发布流程：测试通过 → 四文档核验 → `git tag -a vX.Y.Z -m "vX.Y.Z: 中文摘要"` → `git push origin main --tags` → 建 GitHub Release（标题与 tag subject 逐字一致）。市场条目钉 `tarball:` 字段；裸名 `dsh-commandcode` 被第三方抢注勿用，npm 包为 `@jianfengwang/dsh-commandcode`（2026-11-08 换名首发）。
 
 ## 项目专属注意
 
