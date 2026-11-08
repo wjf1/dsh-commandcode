@@ -112,6 +112,14 @@ dsh-commandcode/
 
 ## 5. 待办与下一步
 
+### 真机批次执行卡（2026-11-08 制定，新会话按序执行）
+
+- 前置状态：npm 已换名 `@jianfengwang/dsh-commandcode@1.1.3`（裸名被第三方抢注）；市场 PR #10798 已关闭（上游 cd36e85 达成同目标）；最新 tag v1.1.3。
+- **步骤 1（截图三连拍，需 DSH 宿主在场）**：按 0.2.x 装载层解锁路径 a–d 使 llm-commandcode row 装载（phase 非 null、fiber 创建、client bundle 200）→ 截模型卡片 / 设置页 / 用量面板三图入 `assets/` → README 三处 404 消除 → 提交推送。
+- **步骤 2（profile 依赖切换）**：`C:\Users\admin\.dsh\profiles\desktop\package.json` 的 dependencies 将 `dsh-commandcode ^1.1.2` 换为 `@jianfengwang/dsh-commandcode ^1.1.3`（bundles 同步）；`node_modules/dsh-commandcode` 重装为新名；DSH 重启后确认插件加载。
+- 验收：README 无 404；插件列表显示新名版本；设置页与用量面板可用。
+- 完成后：§1 已知缺口清账，CHANGELOG `[Unreleased]` 的 16 条评估定版（可发 v1.2.0，annotated tag + 规范标题 Release）。
+
 1. **盯市场 PR 合并**：PR [#10798](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/10798)（分支 `update-entry-v1-1-2`）已在 CI 走查中，合并后确认上游 README 两份生成文件里 `wjf1/dsh-commandcode` 行已同步为新 description。
 2. **补真实截图**：在 DSH Desktop 0.7.1 内实拍 `assets/panel-usage.png`、`assets/card-models.png`、`assets/settings-accounts.png`，把 `screenshots.json` 从空数组改成实际清单，再向市场提一次条目更新（届时可在 Release 补 `.tgz` 资产并加 `tarball` 字段，市场索引即可展示版本号）。
 3. ~~可选：发 npm~~ **被抢注阻塞（2026-11-01）**：npm 名 `dsh-commandcode` 已被第三方 `code_tin <code_tin@msn.com>` 于本日 21:17（UTC 13:17）抢注（连发 0.0.0-stage/0.1.0/0.1.1，实现为同类竞品、无恶意钩子，但会劫持市场 probe-npm 的自动解析）。本账号 `jianfengwang` 发布 403。**防御**：GitHub Release `v1.1.3` 附官方 npm tarball，市场条目钉 `tarball:` 字段指向该资产，市场安装永不落到冒牌包。用户可选项：向 npm 举报抢注 / 换名（如 `@jianfengwang/dsh-commandcode`）/ 接受 GitHub 安装现状。
