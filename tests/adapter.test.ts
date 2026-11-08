@@ -228,15 +228,19 @@ describe('adapter pure helpers', () => {
 
 describe('resolveAuthFileApiKey', () => {
   const originalUserProfile = process.env.USERPROFILE
+  const originalHome = process.env.HOME
 
   afterEach(() => {
     if (originalUserProfile === undefined) delete process.env.USERPROFILE
     else process.env.USERPROFILE = originalUserProfile
+    if (originalHome === undefined) delete process.env.HOME
+    else process.env.HOME = originalHome
   })
 
   function withAuthFile(content: string | undefined): string | undefined {
     const home = makeTempDir()
     process.env.USERPROFILE = home
+    process.env.HOME = home // POSIX（CI Linux）上 os.homedir() 读 HOME，两个都要指到临时目录
     if (content !== undefined) {
       mkdirSync(join(home, '.commandcode'), { recursive: true })
       writeFileSync(join(home, '.commandcode', 'auth.json'), content, 'utf-8')
