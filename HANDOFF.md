@@ -1,7 +1,7 @@
 # HANDOFF — dsh-commandcode
 
 > 跨会话接力文档。**新会话接手时先读本文件，再读代码。**
-> 最后更新：2026-10-31 · 对应版本 `v1.1.2`
+> 最后更新：2026-11-04 · 对应版本 `v1.1.3`
 
 ---
 
@@ -13,12 +13,12 @@
 
 | 项 | 状态 |
 |---|---|
-| 版本 | `package.json` = **1.1.2** |
+| 版本 | `package.json` = **1.1.3** |
 | 分支 | `main` |
 | 已验证功能 | 提供商路由注册、Models 页卡片、模型目录 SWR、设置页（连接/用量与套餐/多账户/高级）、`/commandcode` 终端命令、OAuth 回环登录、用量与套餐面板、多账户轮换 |
 | 测试 | `npm test` 覆盖 `tests/` 下 6 个文件（accounts / errors / login / retry / adapter / catalog，Node 内置 test runner），101 个用例 |
 | CI | `.github/workflows/ci.yml`：Node 22 → `npm ci` → `typecheck` → `test` → `build` → 校验 `lib/` 三件产物存在 |
-| 发布渠道 | ①GitHub 公开发布（tag + Release）；②DSH 插件市场（awesome-dsh-plugin，条目已收录，PR #3925 于 2026-08-31 合并）；③**未发布到 npm**（`dsh-commandcode` 在 npm 上为 404） |
+| 发布渠道 | ①GitHub 公开发布（tag + Release）；②DSH 插件市场（awesome-dsh-plugin，条目已收录，PR #3925 于 2026-08-31 合并）；③**未发布到 npm**（npm 名 `dsh-commandcode` 已被第三方抢注，2026-11-01 起 GitHub Release 附官方 tarball 供市场条目钉定） |
 | 市场条目 | `data/plugins/wjf1__dsh-commandcode.yml`，`install` 为 `dsh plugin --profile web add github:wjf1/dsh-commandcode`，目录中 version/npm 均为空、无截图 |
 | 已知缺口 | `assets/` 目录尚未入库（README 截图章节指向 `assets/*.png`，需补真实截图）；`screenshots.json` 目前是 `{"screenshots": []}` |
 
@@ -94,6 +94,8 @@ dsh-commandcode/
 **v1.1.0（2026-08-30）** — 适配 DeepSeek Harness 0.1.2-alpha.1（`CallId`→`ToolCallId`、`max-tokens`、`dsh-client-store` 接替 `dsh-client-runtime`、`/api` Fetch 路由、`CredentialRef` 品牌化字符串）；落盘 `vendor/` 依赖闭包；修 `tsc --noEmit` 从未能跑通、`/commandcode` 在 ESM 里用 `require()` 崩、测试用错 `assert` 导出。
 
 **本轮（2026-10-21，未发版）** — 补齐发布门禁要求的四文档：新增 `HANDOFF.md`；双语 README 增加截图章节与 `lib/` 提交原因说明、补全项目结构树；CHANGELOG 增加 `[Unreleased]` 小节。随后创建 **首个** annotated tag `v1.1.2` 与 GitHub Release（此前仓库无任何 tag 与 Release）。
+
+**本轮（2026-11-08，未发版）** — 文档修正：HANDOFF 头部「最后更新 / 对应版本」与 §1 版本表对齐 v1.1.3（原停在 v1.1.2）；发布渠道描述更新为 npm 抢注现状（GitHub Release 附官方 tarball 钉定）；CHANGELOG `[Unreleased]` 去重重复的 `### Fixed` 标题。
 
 **本轮（2026-10-31，未发版）** — 测试补齐与市场条目更新：
 

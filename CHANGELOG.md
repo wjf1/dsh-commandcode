@@ -29,8 +29,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-### Fixed
-
 - **登录回调的 CORS 通配符**（`src/login.ts`）：回环回调服务器此前对任意来源回 `Access-Control-Allow-Origin: *`，任何网页都能跨域读取回调响应，并可借简单 POST 把攻击者自己的 API key 注入进去。现在无 `Origin`（浏览器顶级导航）不下发任何 CORS 头；有 `Origin` 时必须是绑定的回环端口或白名单来源，其余一律 403 且不回 CORS 头。
 - **超限请求的 413 发不出去**（`src/login.ts`）：请求体超限时先 `req.destroy()` 再回 413，客户端只会收到 `ECONNRESET`。现在先回响应、再靠 drain 收尾。
 - **流式响应重复 finish**（`src/adapter.ts`）：循环外的兜底 `finish` 无条件执行，上游已经发过 `finish` 时会再补一个，按 `finish` 计费/收尾的下游被触发两次。现在用 `finished` 标记守卫。
