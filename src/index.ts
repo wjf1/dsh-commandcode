@@ -29,7 +29,9 @@ import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { assertUsableApiKey, LlmError } from '@deepseek-ai/dsh-llm'
 import { credentialRef, type CredentialRef } from '@deepseek-ai/dsh-credentials'
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+// DSH 0.2.x 起 settings 由宿主从本插件的 `Config` schema 自动投影（`SettingsForms`），
+// 不再有 `installSettingsSection` / `settingsNamespace`（0.1.x 的 `settings.register` 契约已移除）。
+// 插件侧只需可选声明页面策略；settings 的命名空间即 profile 条目 id（`llm-commandcode`）。
 
 import {
   CommandCodeAdapter,
@@ -150,9 +152,13 @@ export type { LocaleId, CommandLocale } from './command-locales.ts'
 
 // --- Plugin identity ---
 export const name = 'llm-commandcode'
+// `settings` is declared optional-soft: 0.1.x hosts have no `settings.configure`, so the
+// block below skips itself when the service is absent. Listing it here is what lets
+// `ctx.inject(['settings'])` resolve on 0.2.x, where the service does exist.
 export const inject = ['llm']
 
-const NS = settingsNamespace('llm-commandcode')
+/** Settings namespace: the profile entry id, matching the row in `cordis.patch.yml`. */
+const NS = 'llm-commandcode'
 const DEFAULT_API_KEY_ENV = 'COMMANDCODE_API_KEY'
 
 /** The single provider route this plugin owns. */
@@ -216,7 +222,9 @@ export function resolveAdapterOptions(config: Config): ResolvedCommandCodeOption
 }
 
 export function apply(ctx: Context, config: Config): void {
-  let current: () => Config = () => config
+  // DSH 0.2.x: a settings edit restarts this fiber and re-invokes `apply` with the new
+  // config, so the argument is always current — no mutable `current` indirection needed.
+  const current = (): Config => config
   let lastRaw: Config | undefined
   let lastGood: ResolvedCommandCodeOptions | undefined
 
@@ -359,12 +367,10 @@ export function apply(ctx: Context, config: Config): void {
   applyUsageRemote(ctx, { adapter, reports: usageReports, login: loginFlow })
 
   // --- Settings section ---
-  installSettingsSection(ctx, NS, Config, config, {
-    setSource: (source) => {
-      current = source
-    },
-    onChange: () => {
-      pool.reset()
-    },
-  })
+  // DSH 0.2.x: the host projects this plugin's `Config` schema into the Settings UI on
+  // its own (`SettingsForms.describe()` walks the active config entries), so there is no
+  // section to register and no `configure()` call to make — `auto: true` is the default.
+  // A config edit restarts this fiber (Loader `internal/update` → re-`apply`), so the
+  // account pool is rebuilt from the new `config` on every re-apply. Nothing to watch.
+  ctx.effect(() => () => pool.reset(), 'dsh-commandcode: account pool')
 }

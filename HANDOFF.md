@@ -144,7 +144,19 @@ dsh-commandcode/
    - 影响面：插件主进程半仅这 2 个 API 依赖 0.1 契约（`grep` 全 lib 仅 4 次引用），迁移面很小，但需要按 0.2 的「Config schema 自动投影」重写设置持久化路径。
    - 修复方向（下一轮做）：把 `installSettingsSection(ctx, NS, Config, config, hooks)` 改写为 0.2 形态——settings 页面由宿主从 `Config` schema 自动生成，插件侧改为 `ctx.settings.configure(presentation)` 只声明页面策略；`settingsNamespace('llm-commandcode')` 直接返回字符串，可内联常量。改完 `npm run build` 后 `lib/` 一并提交（见避坑第 1 条）。
    - **顺带修正第 6 条的三个误判**：a) 宿主**有** `--inspect` 与 CLI（`resources/app/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js`，`--dump-config` 可只读组合 profile），第 6 条⑤「无 CLI / 无 inspect」不成立；b) 用 `loadProfileDirectory()` 复现可打印 `skippedBundles`，bundle 层其实**全部装载成功**（含本插件），失败发生在 mount 的 import 阶段；c) `@michengai/*` 两个插件是真 peer 不兼容（精确版本枚举不含 rc.3，需 `dsh plugin allow-version` 豁免），与本插件**不同因**，第 6 条 c) 路径的类比不成立。
-   - **profile 侧现状（本会话已改）**：依赖已切 `@jianfengwang/dsh-commandcode ^1.1.3`（经宿主插件管理器 UI 正规安装，runtime resolution 正常发布）；`cordis.patch.yml` 的 `llm-commandcode` row 已改 `name: "@jianfengwang/dsh-commandcode"` + `disabled: false`；插件包内 `cordis.patch.yml` 的 insert `name` 同步改 scope 名；10 个 `@deepseek-ai/dsh-*` peer 已按宿主同版 0.2.1-rc.3 物理装入 profile（此前物理缺失，即便 row 名正确也会因 peer import 失败而挂）。**注意**：这些 peer 装进 profile 后，插件 UI 与宿主自带组件各自加载一份，存在双实例风险；根治仍靠第 7 条的 API 迁移，迁移完成后应评估是否移除这些冗余 peer。
+   - **profile 侧现状（本会话已改）**：依赖已切 `@jianfengwang/dsh-commandcode ^1.1.3`（经宿主插件管理器 UI 正规安装，runtime resolution 正常发布）；`cordis.patch.yml` 的 `llm-commandcode` row 已改 `name: "@jianfengwang/dsh-commandcode"` + `disabled: false`；插件包内 `cordis.patch.yml` 的 insert `name` 同步改 scope 名。
+   - **⚠️ 已回滚的错误尝试（务必不要再做）**：曾把 10 个 `@deepseek-ai/dsh-*`（timeout / credentials / llm / settings / launch-environment / attachment / client-connection / client-locale / client-ui-settings / client-ui-settings-models）连同 `cordis`、`schemastery` 用 `pnpm add` 装进 profile。**这是错误的**——它们是宿主核心包，装进 profile 等于制造副本，会劫持认证与连接实例（实测导致 `desktop welcome: Web authentication failed`）。已全部 `pnpm remove` 回滚，`package.json` 现无任何 `@deepseek-ai/dsh-*` 直接依赖。**宿主 0.2.x 已在 runtime resolution 表里提供这些包**（894 条），插件 import 本应走拦截器命中宿主副本，无需也不得本地装。
+
+8. **迁移已落地（2026-11-09，工作区改动，未发版）**：主进程半已按 0.2 范式的做法完成最小迁移，`npm run typecheck` / `npm test`（101 用例全绿）/ `npm run build` 全部通过，产物已部署本机 profile 验证。
+   - 改动（`src/index.ts`，3 处）：
+     ① 删掉 `import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'`（整条 import 移除，产物已不再 import 该包）。
+     ② `const NS = settingsNamespace('llm-commandcode')` 改为 `const NS = 'llm-commandcode'`（命名空间即 profile 条目 id）。
+     ③ 删掉 `installSettingsSection(ctx, NS, Config, config, {...})` 调用块，改为 `ctx.effect(() => () => pool.reset(), 'dsh-commandcode: account pool')`——0.2.x 的 settings 页面由宿主从 `Config` schema 自动投影，插件侧**不需要注册也不需要 `configure()`**（`auto: true` 已是默认）。
+     ④ `let current: () => Config = () => config` 简化为 `const current = (): Config => config`——0.2.x 下配置编辑会重启 fiber 并重新 `apply(ctx, config)`，闭包重定向已无必要。
+   - **踩坑记录（重要，下次直接照做）**：中途曾两次尝试 `ctx.inject(['settings'], ...)` 调用 `settings.configure({auto:true})`，**都会导致 `import failed` 且宿主 `web boot: 1 entry did not activate`**。原因：`settings` 服务自身 `static inject = ["configEditor", "profileContext"]`，在插件 fiber 内再 `inject(['settings'])` 形成启动期依赖环。硬注入（把 `settings` 加进顶部 `inject` 数组）同样失败。**结论：本插件不要碰 `settings` 服务**，settings UI 靠宿主自动投影即可。
+   - **验证边界**：已验证「插件主进程半 import 成功 + 进入 boot manifest（94 项含本插件）」；**尚未验证 UI 实际渲染**，因为宿主自身此时出现 `desktop welcome: Web authentication failed` 故障（见下条），与本插件无关（移除本插件后同样复现）。
+
+9. **宿主自身故障（2026-11-09，与本插件无关，阻塞截图）**：DSH Desktop 启动后稳定报 `Error: desktop welcome: Web authentication failed`（`resources/app/lib/main.js:8935` 的 `connectDesktopWelcome` 对 web 端根 URL 带 cookie 请求非 200），窗口标题变为 `DeepSeek Harness is unavailable`，`dsh web:` 打印出的端口连接即断。**隔离验证**：把 `@jianfengwang/dsh-commandcode` 从 `dsh.profile.bundles` 移除后启动，同样报此错——证明与本插件无关。可能诱因：`%LOCALAPPDATA%\@deepseek-aidsh-desktop-updater` 下已有 `installer.exe`（289 MB，2026-10-27）+ `pending` 目录，运行版本仍是 `0.2.1-rc.3`，而 stdout 每次启动都报发现 `0.2.2-rc.1` 更新——暂存更新与运行版本并存可能破坏了 welcome 握手。**下一步建议**：按用户意愿选择 a) 完成到 0.2.2-rc.1 的更新（更新器已在本地备好 installer）；b) 清掉 `@deepseek-aidsh-desktop-updater/pending` 后重启；c) 回滚到 0.2.1-rc.3 干净安装。恢复前截图三连拍无法进行。
 
 ---
 

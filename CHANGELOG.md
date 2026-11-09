@@ -33,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **插件在 DSH 0.2.x 宿主上完全不装载（主进程半 import 失败）**：主进程入口 import 了 `@deepseek-ai/dsh-settings` 的 `installSettingsSection` / `settingsNamespace`——这两个导出只存在于 0.1.x（`vendor/` 内 devDependency 钉的 0.1.2-alpha.1 仍有），0.2.x 的 `dsh-settings` 已重构为 `SettingsForms` 类并删除了它们，属破坏性重构而非改名。import 失败使 fiber 从未创建，`dsh-client-modules` 因此不把 client bundle 放进启动 manifest（`/plugins/<id>/client.js` 恒 404、无 `style[data-plugin]` 标记），设置页与模型卡片静默失效——此前多轮排查把现象误判为宿主装载层问题。现改为 0.2.x 范式：删掉该 import，命名空间内联为 profile 条目 id，settings 页面交由宿主从本插件 `Config` schema 自动投影（0.2.x 不需要也不支持插件侧注册）；配置变更随 fiber 重启重新 `apply`，`current()` 闭包重定向一并去掉。验证：`npm run typecheck`、`npm test`（101 用例）、`npm run build` 全绿，部署后插件进入 boot manifest（94 项含本插件）。
+
 - **登录回调的 CORS 通配符**（`src/login.ts`）：回环回调服务器此前对任意来源回 `Access-Control-Allow-Origin: *`，任何网页都能跨域读取回调响应，并可借简单 POST 把攻击者自己的 API key 注入进去。现在无 `Origin`（浏览器顶级导航）不下发任何 CORS 头；有 `Origin` 时必须是绑定的回环端口或白名单来源，其余一律 403 且不回 CORS 头。
 - **超限请求的 413 发不出去**（`src/login.ts`）：请求体超限时先 `req.destroy()` 再回 413，客户端只会收到 `ECONNRESET`。现在先回响应、再靠 drain 收尾。
 - **流式响应重复 finish**（`src/adapter.ts`）：循环外的兜底 `finish` 无条件执行，上游已经发过 `finish` 时会再补一个，按 `finish` 计费/收尾的下游被触发两次。现在用 `finished` 标记守卫。
