@@ -134,6 +134,18 @@ dsh-commandcode/
    ⑥ **补三张截图（panel-usage / card-models / settings-accounts）继续被此项阻塞**。解锁路径建议（按性价比排序）：a) 给宿主主进程开 `--inspect` 或找到上游日志开关后重启，读 llm-commandcode row 的激活错误；b) 若上游发布带 CLI 的版本，用 `dsh --dump-config` 对照 include 树中该 row 的最终形态；c) 对照宿主上同样「组件未运行」过的插件（如 `@michengai/dsh-archive-manager`、`@michengai/dsh-im-connect` 曾因 peer 不兼容被 deny 后豁免恢复）确认恢复手法是否适用于本例；d) 等 0.2.1 正式版看装载层是否变化。
    本机已按上述状态安装：登记进 profile 的 dependencies + bundles（`^1.1.2`，裸目录手动部署于 `profiles/desktop/node_modules/dsh-commandcode`，lib/ 与 src/ 同步）。
 
+7. **根因已定性（2026-11-09 真机批次，推翻了第 6 条「装载层 / 宿主 bug」的判断）**：**本插件主进程半用了 DSH 0.1.x 的 settings API，在 0.2.x 上必然 import 失败**，因此 fiber 从未创建、client bundle 从未进入启动清单——第 6 条描述的全部现象（phase: null、404、无 style 标签）都是这一个原因的下游表现。
+   - 证据链：
+     ① `src/index.ts:32`（v1.1.3 与工作区 HEAD 一致）`import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'`，第 155/362 行使用。
+     ② 这两个导出**只存在于 0.1.x**：`vendor/deepseek-ai-dsh-settings-0.1.2-alpha.1.tgz` 解包后 `lib/index.js` 的 export 表确有 `installSettingsSection, settingsNamespace, SettingsProvider`（插件 `package.json:159` 的 devDependency 正钉这个 tgz，说明主进程半是按 0.1.2-alpha.1 写的）。
+     ③ 宿主 0.2.1-rc.3 的 `@deepseek-ai/dsh-settings` 已重构为 `SettingsForms` 类，export 表只剩 `{ SettingsConflictError, SettingsForms, SettingsForms as default, redactSecrets }`——**npm 上的 0.2.1-rc.3 与宿主内副本逐字一致，都不是装错版本**。0.2.x 的 settings 改为「从 entry 的 `Config` schema 自动投影」（`describe()` 遍历 `configEditor.configuration()`），**不再有 `register(ns, schema, ...)` 这个概念**，因此不是改名而是范式替换，无直接等价 API。
+     ④ 直接 import 实测：`import(.../node_modules/@jianfengwang/dsh-commandcode/lib/index.js)` → `SyntaxError: The requested module '@deepseek-ai/dsh-settings' does not provide an export named 'installSettingsSection'`。
+     ⑤ **因果确证**：临时给 `dsh-settings/lib/index.js` 补两个空 stub 后，插件主模块 `IMPORT OK`（导出 60+ 项全部正常），重启宿主后 `window.__DSH_BOOT__.entries` 从 93 项变为 **94 项且含 `@jianfengwang/dsh-commandcode`**，`plugins/??@jianfengwang/dsh-commandcode/client.js` 首次返回 **200（90 999 字节）**（此前恒 404）。**验证后 stub 已还原。**
+   - 影响面：插件主进程半仅这 2 个 API 依赖 0.1 契约（`grep` 全 lib 仅 4 次引用），迁移面很小，但需要按 0.2 的「Config schema 自动投影」重写设置持久化路径。
+   - 修复方向（下一轮做）：把 `installSettingsSection(ctx, NS, Config, config, hooks)` 改写为 0.2 形态——settings 页面由宿主从 `Config` schema 自动生成，插件侧改为 `ctx.settings.configure(presentation)` 只声明页面策略；`settingsNamespace('llm-commandcode')` 直接返回字符串，可内联常量。改完 `npm run build` 后 `lib/` 一并提交（见避坑第 1 条）。
+   - **顺带修正第 6 条的三个误判**：a) 宿主**有** `--inspect` 与 CLI（`resources/app/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js`，`--dump-config` 可只读组合 profile），第 6 条⑤「无 CLI / 无 inspect」不成立；b) 用 `loadProfileDirectory()` 复现可打印 `skippedBundles`，bundle 层其实**全部装载成功**（含本插件），失败发生在 mount 的 import 阶段；c) `@michengai/*` 两个插件是真 peer 不兼容（精确版本枚举不含 rc.3，需 `dsh plugin allow-version` 豁免），与本插件**不同因**，第 6 条 c) 路径的类比不成立。
+   - **profile 侧现状（本会话已改）**：依赖已切 `@jianfengwang/dsh-commandcode ^1.1.3`（经宿主插件管理器 UI 正规安装，runtime resolution 正常发布）；`cordis.patch.yml` 的 `llm-commandcode` row 已改 `name: "@jianfengwang/dsh-commandcode"` + `disabled: false`；插件包内 `cordis.patch.yml` 的 insert `name` 同步改 scope 名；10 个 `@deepseek-ai/dsh-*` peer 已按宿主同版 0.2.1-rc.3 物理装入 profile（此前物理缺失，即便 row 名正确也会因 peer import 失败而挂）。**注意**：这些 peer 装进 profile 后，插件 UI 与宿主自带组件各自加载一份，存在双实例风险；根治仍靠第 7 条的 API 迁移，迁移完成后应评估是否移除这些冗余 peer。
+
 ---
 
 ### 市场提交的 stale fork 守卫（2026-11-04）
