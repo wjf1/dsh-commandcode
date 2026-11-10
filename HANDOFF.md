@@ -162,6 +162,16 @@ dsh-commandcode/
    - **已排除的诱因**：`%LOCALAPPDATA%\@deepseek-aidsh-desktop-updater\pending`（内含 0.2.1-rc.3 installer 残留，移出后仍失败，已还原）；profile patch 内容（`diff` 上一版备份，我的改动只有 `llm-commandcode` row）；dsh-purge handoff（`phase: complete`，正常）。
    - **待用户决定的三条路**：a) **升级到 0.2.2-rc.1**（stdout 每次启动都提示可用，`installer.exe` 已在 updater 目录）——最可能修复，但属宿主大版本变更；b) 重装当前 0.2.1-rc.3；c) 继续在原地排查 Electron session cookie 写入路径。**恢复前截图三连拍无法进行**。
 
+10. **宿主已修复（2026-11-10，卸载重装 0.2.2-rc.1）**：按用户决定走「卸载重装」，结果**彻底解决**了第 9 条的认证故障。
+    - **流程**：备份 `profiles/desktop/{package.json,cordis.patch.yml,cordis.yml,pnpm-workspace.yaml,pnpm-lock.yaml,.plugin-manager}` 到 `F:\AI\Zcode\_tmp\dsh-profile-backup-20261109\`（447 KB）→ 静默卸载 `Uninstall DeepSeek Harness.exe /S`（安装目录被删、`.dsh` 用户数据 2.9 GB 完好保留）→ 用官方 installer 装回同一路径 `F:/AI/DeepSeek haness`（版本 0.2.2-rc.1）。
+    - **关键发现**：**`resources/runtime/` 必须由 installer 全新铺设**。我第一次是「原地覆盖安装」，结果 `resources/runtime/` 被清空成空目录，导致 0.2.2 启动即 `DesktopHostFatalError: ENOENT ... runtime/office-skills/office/SKILL.md`；全新安装后该目录完整（`bin/`、`cli/`、`office-skills/`（7 个 skill + `office/references/sidecar.md`）、`primary-runtime/`、`versions.json`（node 24.21.0 / pnpm 11.28.5））。**教训：升级 DSH 必须走卸载重装，不能原地覆盖。**
+    - **修复验证**：5 进程存活、主窗口标题为 `DeepSeek Harness`（不再是 "is unavailable"）、**有实际监听端口**（此前故障时 0 个监听）、`dsh web:` 端口返回 **303**（正是 `authenticateWebHost` 期望的认证跳转）、UI 能读出完整界面文本（此前恒为 "Loading plugins…"）。
+    - **附带收益**：0.2.2 提供了完整 `resources/runtime/`（含 node + pnpm + office sidecar），后续运行不再依赖系统 node。
+11. **插件在 0.2.2 上仍未装载（新问题，与 settings 迁移无关）**：宿主修好后，`@jianfengwang/dsh-commandcode` 在插件页显示「**包含的组件共 1 个 · `llm-commandcode` 未运行**」，`window.__DSH_BOOT__.entries`（96 项）无本插件、无 `style[data-plugin]` 标记。
+    - **已排除**：① profile patch 的 `disabled: false` 已生效（状态从「已关闭」变「未运行」，证明 row 被读取）；② 宿主 stderr 完全干净（无 `import failed`、无 `did not apply`、无 preflight deny）；③ 0.2.2 的 `assertBundlePlatform` 放行（本插件未声明 `dsh.bundle.platforms`，该函数 `platforms === undefined` 直接 return）；④ 0.2.2 启动时**曾把本插件从 `dsh.profile.bundles` 移除**（deps 保留），手工加回后不再被移除，但仍不装载。
+    - **尚未定位**：0.2.2 的 app-boot 在 asar 内（`resources/app.asar` 的 `dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js`），已可导出到 `F:\AI\Zcode\_tmp\app-boot-022.js` 但无法直接 import（其依赖 `@deepseek-ai/cordis` 解析不到）。**下一步**：用宿主自带的 `resources/runtime/bin/node` + `resources/runtime/cli/` 跑 `--dump-config`（0.2.2 的 CLI 机制与 0.2.1 不同，`cli/bin.js` 路径待确认），或直接在插件详情页找「未运行」的展开诊断。
+    - **另注意**：重装后 dsh-purge 的「用户须知」弹窗会**无限重弹**（连点 3 次仍复现），会遮挡所有插件页交互，需先处理它才能继续 UI 走查。
+
 ---
 
 ### 市场提交的 stale fork 守卫（2026-11-04）
