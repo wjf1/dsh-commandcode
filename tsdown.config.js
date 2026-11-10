@@ -14,6 +14,15 @@
 //   `createSnapshotStore` is bundled into the client artifact instead of
 //   being left external.
 
+import { readFileSync } from 'node:fs';
+
+// The client bundle self-registers under the package name, which the Harness
+// client-module registry keys on. A hardcoded copy drifted from `name` during
+// the 2026-11-08 rename to `@jianfengwang/dsh-commandcode`, and the registry
+// then rejected the bundle as a duplicate ("bundle executed twice without
+// invalidate?"). Read it from package.json so the two cannot drift again.
+const packageName = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).name;
+
 /** @type {import('tsdown').Config[]} */
 export default [
   {
@@ -44,7 +53,7 @@ export default [
     define: { 'process.env.NODE_ENV': '"production"' },
     external: ['react', 'react/jsx-runtime', 'react-dom'],
     banner: {
-      js: 'window.__ModuleLoader__.load({ id: "dsh-commandcode", factory: (require) => {\n'
+      js: `window.__ModuleLoader__.load({ id: ${JSON.stringify(packageName)}, factory: (require) => {\n`
         + 'var module = { exports: {} };\n'
         + 'var exports = module.exports;\n',
     },

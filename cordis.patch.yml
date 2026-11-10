@@ -6,7 +6,7 @@
 # as a directive/indicator and fails to parse.
 - insert:
     - id: llm-commandcode
-      name: "dsh-commandcode"
+      name: "@jianfengwang/dsh-commandcode"
       config:
         apiKeyEnv: COMMANDCODE_API_KEY
 

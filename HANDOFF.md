@@ -172,6 +172,22 @@ dsh-commandcode/
     - **尚未定位**：0.2.2 的 app-boot 在 asar 内（`resources/app.asar` 的 `dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js`），已可导出到 `F:\AI\Zcode\_tmp\app-boot-022.js` 但无法直接 import（其依赖 `@deepseek-ai/cordis` 解析不到）。**下一步**：用宿主自带的 `resources/runtime/bin/node` + `resources/runtime/cli/` 跑 `--dump-config`（0.2.2 的 CLI 机制与 0.2.1 不同，`cli/bin.js` 路径待确认），或直接在插件详情页找「未运行」的展开诊断。
     - **另注意**：重装后 dsh-purge 的「用户须知」弹窗会**无限重弹**（连点 3 次仍复现），会遮挡所有插件页交互，需先处理它才能继续 UI 走查。
 
+12. **又突破两层（2026-11-10 续查，0.2.2 上包已能 import）**：修掉两个独立缺陷后，失败点从「完全不装载」推进到「等一个不存在的服务」，每次都有精确证据：
+    - **缺陷 A —— profile patch 的 row 名覆盖被拒（已修）**：`dsh --profile <clone> --dump-config` 输出
+      `patch: name mismatch for "llm-commandcode" (expected "dsh-commandcode", got "@jianfengwang/dsh-commandcode"), skipping`。
+      原因：插件包自带 patch 里的 insert row 仍写裸名 `name: "dsh-commandcode"`，而我在 profile patch 里用 scope 名去覆盖它，被「name 必须与被 patch 的 row 一致」规则拒绝，于是我的 `disabled: false` 整条被跳过。
+      修法：**插件包内 `cordis.patch.yml` 的 insert `name` 改为 `@jianfengwang/dsh-commandcode`，同时删掉 profile patch 里那行多余的 `name`**（只留 `disabled: false`）。修后 dump 不再报 mismatch。
+    - **缺陷 B —— client bundle 硬编码旧包名（已修）**：渲染层 console 抓到
+      `Error: client-modules: duplicate factory registration for "dsh-commandcode" (bundle executed twice without invalidate?)`。
+      根因在 `tsdown.config.js:47` 的 banner 把 `window.__ModuleLoader__.load({ id: "dsh-commandcode" })` 写死，改名后与 boot manifest 的 entry id `@jianfengwang/dsh-commandcode` 不一致，registry 判为重复注册。
+      修法：改为从 `package.json` 读 `name` 生成 id（`readFileSync(new URL('./package.json', import.meta.url))`），产物首行现为 `id: "@jianfengwang/dsh-commandcode"`。**今后改名不会再脱节。**
+    - **当前卡点（未修，需架构级改动）**：修完 A+B 后错误变为
+      `@jianfengwang/dsh-commandcode: pending (waiting for service: settingsScope)`。
+      **`settingsScope` 在 0.2.2 的 asar 里完全不存在**（全量扫描 `.js` 无命中）。0.2.2 的 `dsh-client-ui-settings` 实际提供的服务是 **`settingsSchema`** 与 **`configForms`**（由 `super(ctx, "<name>")` 注册），设置页数据层从「scope handle」换成了「ConfigForms + schema」。
+      而本仓库 `src/client/index.ts:180` 用的是 `ctx.settingsScope.bind({ namespace: COMMANDCODE_NS })`，`inject` 数组第 363 行也声明了 `'settingsScope'`——**这是 0.2.1 及更早的 client 契约**。
+    - **结论与下一步**：这是第二次「范式替换」（第一次是主进程的 `installSettingsSection`）。修它需要把 `CommandCodeSettingsController` 的数据源从 `settingsScope.bind()` 改到 0.2.2 的 `configForms`/`settingsSchema`，属客户端架构改动，**不适合在真机批次里顺手做**。建议单开一轮：先读 0.2.2 `dsh-client-ui-settings/lib/client.js` 的 `ConfigForms` 完整 API（已可导出到 `_tmp` 分析），再改 `src/client/index.ts` 与相关测试。
+    - **排查工具沉淀（下次直接可用）**：① `dsh --profile <clone> --dump-config`（CLI 在 `resources/runtime/cli/bin/dsh.cmd`，desktop profile 被保护，需克隆一份 + `mklink /J node_modules`）；② 渲染层 console 捕获脚本 `F:\AI\Zcode\_tmp\renderer-console.mjs`（连 9222 的 page target，抓 `Runtime.consoleAPICalled`，插件 import 的真实错误只在这里出现）；③ asar 内文件导出：注意内容 offset 有 ~16 字节偏差，需按 `window.__ModuleLoader__` 或 `import {` 对齐。
+
 ---
 
 ### 市场提交的 stale fork 守卫（2026-11-04）
